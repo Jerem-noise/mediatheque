@@ -752,32 +752,22 @@
       document.getElementById("stat-marion").textContent = marion.length;
     };
 
-    // ==================== API OPEN LIBRARY ====================
+    // ==================== PROXY API VIA CLOUDFLARE WORKER (BNF & OL) ====================
+    const WORKER_URL = "https://proxy-bnf.batteux-jerem.workers.dev/"; // 👈 METTEZ VOTRE URL DE WORKER ICI
+
     const searchBooks = async (query) => {
       if (query.length < 2) return [];
       try {
-        const q = encodeURIComponent(query);
-        const url = `https://openlibrary.org/search.json?q=${q}&lang=fre&limit=8&fields=title,author_name,cover_i,isbn,first_publish_year`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Erreur OpenLibrary");
+        const response = await fetch(`${WORKER_URL}?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error("Erreur de communication avec le proxy Cloudflare");
 
-        const data = await response.json();
-        if (!data.docs || data.docs.length === 0) return [];
-
-        return data.docs.map(d => ({
-          title: d.title || "Titre inconnu",
-          author: (d.author_name || ["Auteur inconnu"]).slice(0, 2).join(", "),
-          cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
-          isbn: d.isbn?.[0] || "",
-          year: d.first_publish_year ? d.first_publish_year.toString() : "",
-          source: "OpenLibrary"
-        }));
+        return await response.json();
       } catch (error) {
-        console.error("Erreur recherche OpenLibrary:", error);
+        console.error("Erreur recherche Proxy:", error);
+        // En cas de panne de l'API, on ne bloque pas l'utilisateur, le système proposera l'ajout manuel
         return [];
       }
     };
-
     // ==================== TOAST NOTIFICATIONS ====================
     const showToast = (message, type = "info") => {
       const container = document.getElementById("toast-container");
