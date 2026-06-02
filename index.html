@@ -6,51 +6,32 @@
     <title>Ma Médiathèque - Gestion de Bibliothèque</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
     <style>
-        .book-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .book-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.15);
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+        .book-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .book-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -8px rgba(0,0,0,0.15); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     </style>
 </head>
+
 <body class="bg-slate-50 text-slate-800 min-h-screen">
+<div id="app"></div>
 
-    <div id="app"></div>
+<script type="text/babel">
 
-    <script type="text/babel">
- // --- COMPOSANTS D'ICÔNES LUCIDE ---
+// --- ICONS ---
 const Icon = ({ name, className = "w-5 h-5", ...props }) => {
     const [iconHtml, setIconHtml] = React.useState("");
 
     React.useEffect(() => {
-        // Version standard de Lucide pour générer l'icône proprement
         if (window.lucide && window.lucide.icons[name]) {
             const icon = window.lucide.icons[name];
-            // On génère les attributs sous forme de chaîne
+
             const attributes = {
                 xmlns: "http://www.w3.org/2000/svg",
                 width: "24",
@@ -64,528 +45,169 @@ const Icon = ({ name, className = "w-5 h-5", ...props }) => {
                 class: className,
                 ...props
             };
-            
-            const attrString = Object.entries(attributes)
-                .map(([k, v]) => `${k}="${v}"`)
-                .join(" ");
 
-            // On extrait le contenu des chemins de l'icône
+            const attrString = Object.entries(attributes)
+                .map(([k,v]) => `${k}="${v}"`).join(" ");
+
             const childNodes = icon[1].map(node => {
                 const nodeAttrs = Object.entries(node[1])
-                    .map(([k, v]) => `${k}="${v}"`)
-                    .join(" ");
+                    .map(([k,v]) => `${k}="${v}"`).join(" ");
                 return `<${node[0]} ${nodeAttrs} />`;
             }).join("");
 
             setIconHtml(`<svg ${attrString}>${childNodes}</svg>`);
         }
-    }, [name, className, JSON.stringify(props)]);
+    }, [name, className]);
 
-    // Correction ici : Utilisation de className au lieu de class pour React
-    return <span dangerouslySetInnerHTML={{ __html: iconHtml }} className="inline-flex items-center justify-center" />;
+    return <span dangerouslySetInnerHTML={{ __html: iconHtml }} />;
 };
-        // --- SERVICES API & PROXY ---
-        // Liste des proxys CORS pour contourner les restrictions des API publiques
-        const PROXIES = [
-            "https://proxy-bnf.batteux-jerem.workers.dev/?url=", // <-- REMPLACEZ PAR VOTRE URL CLOUDFLARE WORKER
-            "https://corsproxy.io/?",
-            "https://api.allorigins.win/get?url="
-        ];
 
-        // Fonction générique de requête avec repli automatique sur le proxy suivant en cas d'échec
-        const fetchWithProxy = async (targetUrl) => {
-            let lastError = null;
+// --- 🔥 PROXY UNIQUE (TON CLOUDLFARE WORKER) ---
+const PROXY = "https://proxy-bnf.batteux-jerem.workers.dev/?url=";
 
-            for (const proxy of PROXIES) {
-                try {
-                    const url = proxy.includes("allorigins") || proxy.includes("workers.dev")
-                        ? `${proxy}${encodeURIComponent(targetUrl)}`
-                        : `${proxy}${targetUrl}`;
+const fetchWithProxy = async (targetUrl) => {
+    const url = `${PROXY}${encodeURIComponent(targetUrl)}`;
 
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const text = await response.text();
-                    
-                    // Si le proxy est AllOrigins, il encapsule la réponse dans un objet JSON structuré
-                    if (proxy.includes("allorigins")) {
-                        const json = JSON.parse(text);
-                        return json.contents;
-                    }
-                    
-                    return text; // Retourne le texte brut (Utile pour le Cloudflare Worker et corsproxy)
-                } catch (err) {
-                    console.warn(`Proxy ${proxy} échoué:`, err.message);
-                    lastError = err;
-                }
-            }
-            throw new Error("Tous les proxys CORS ont échoué.");
-        };
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        // Service de recherche spécialisé pour la Bibliothèque nationale de France (Format XML SRU)
-        const searchBnf = async (query) => {
-            try {
-                const bnfUrl = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20all%20%22${encodeURIComponent(query)}%22%20and%20bib.recordtype%20all%20%22a%22&maximumRecords=8`;
-                const responseText = await fetchWithProxy(bnfUrl);
+    return await res.text();
+};
 
-                // Analyse structurelle du document XML reçu de la BnF
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(responseText, "text/xml");
+// --- BnF ---
+const searchBnf = async (query) => {
+    const url =
+        `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=` +
+        encodeURIComponent(`bib.anywhere all "${query}" and bib.recordtype all "a"`) +
+        `&maximumRecords=8`;
 
-                if (xmlDoc.querySelector("parsererror")) {
-                    throw new Error("Erreur de formatage des données distantes.");
-                }
+    const xmlText = await fetchWithProxy(url);
 
-                const records = xmlDoc.getElementsByTagName("srw:record");
-                const books = [];
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlText, "text/xml");
 
-                for (let i = 0; i < records.length; i++) {
-                    const record = records[i];
-                    const title = record.getElementsByTagName("dc:title")[0]?.textContent || "Titre inconnu";
-                    const creator = record.getElementsByTagName("dc:creator")[0]?.textContent || "Auteur inconnu";
-                    const identifier = record.getElementsByTagName("dc:identifier")[0]?.textContent || "";
-                    const isbn = identifier.includes("ISBN") ? identifier.replace(/ISBN\s*/i, "").trim() : "";
+    const records = xml.getElementsByTagName("srw:record");
+    const books = [];
 
-                    books.push({
-                        id: `bnf-${i}-${Date.now()}`,
-                        title: title,
-                        author: creator,
-                        isbn: isbn,
-                        source: "BnF"
-                    });
-                }
-                return books;
-            } catch (err) {
-                console.error("Erreur BnF:", err);
-                throw err;
-            }
-        };
+    for (let i = 0; i < records.length; i++) {
+        const r = records[i];
 
-        // Service de recherche pour l'API Open Library (Format JSON standard)
-        const searchOpenLibrary = async (query) => {
-            try {
-                const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8`;
-                const responseText = await fetchWithProxy(olUrl);
-                const data = JSON.parse(responseText);
+        books.push({
+            id: `bnf-${i}-${Date.now()}`,
+            title: r.getElementsByTagName("dc:title")[0]?.textContent || "Titre inconnu",
+            author: r.getElementsByTagName("dc:creator")[0]?.textContent || "Auteur inconnu",
+            isbn: "",
+            source: "BnF"
+        });
+    }
 
-                return (data.docs || []).map((doc, index) => ({
-                    id: `ol-${index}-${Date.now()}`,
-                    title: doc.title || "Titre inconnu",
-                    author: doc.author_name?.[0] || "Auteur inconnu",
-                    isbn: doc.isbn?.[0] || "",
-                    source: "OpenLibrary"
-                }));
-            } catch (err) {
-                console.error("Erreur OpenLibrary:", err);
-                throw err;
-            }
-        };
+    return books;
+};
 
-        // Orchestrateur global des appels API
-        const searchBooks = async (query) => {
-            if (!query || query.trim().length < 2) return [];
+// --- OpenLibrary ---
+const searchOpenLibrary = async (query) => {
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8`;
 
-            // Tentative de récupération prioritaire sur la BnF
-            try {
-                return await searchBnf(query);
-            } catch (bnfError) {
-                console.warn("Échec BnF, bascule sur OpenLibrary...");
-                // Repli d'urgence sur Open Library si la BnF est indisponible
-                try {
-                    return await searchOpenLibrary(query);
-                } catch (olError) {
-                    throw new Error("Impossible de contacter les APIs de recherche. Saisie manuelle activée.");
-                }
-            }
-        };
+    const jsonText = await fetchWithProxy(url);
+    const data = JSON.parse(jsonText);
 
-        // --- APPLICATION PRINCIPALE (REACT) ---
-        const MediathequeApp = () => {
-            // États de l'application
-            const [books, setBooks] = React.useState(() => {
-                const saved = localStorage.getItem("mediatheque_books");
-                return saved ? JSON.parse(saved) : [];
-            });
-            const [searchQuery, setSearchQuery] = React.useState("");
-            const [apiResults, setApiResults] = React.useState([]);
-            const [isLoading, setIsLoading] = React.useState(false);
-            const [apiError, setApiError] = React.useState(false);
-            const [filter, setFilter] = React.useState("all");
+    return (data.docs || []).map((d, i) => ({
+        id: `ol-${i}-${Date.now()}`,
+        title: d.title || "Titre inconnu",
+        author: d.author_name?.[0] || "Auteur inconnu",
+        isbn: d.isbn?.[0] || "",
+        source: "OpenLibrary"
+    }));
+};
 
-            // Formulaire manuel / d'édition
-            const [manualTitle, setManualTitle] = React.useState("");
-            const [manualAuthor, setManualAuthor] = React.useState("");
-            const [manualIsbn, setManualIsbn] = React.useState("");
-            const [editingId, setEditingId] = React.useState(null);
+// --- ORCHESTRATEUR ---
+const searchBooks = async (query) => {
+    if (!query || query.length < 2) return [];
 
-            // Synchronisation locale
-            React.useEffect(() => {
-                localStorage.setItem("mediatheque_books", JSON.stringify(books));
-            }, [books]);
+    try {
+        return await searchBnf(query);
+    } catch {
+        return await searchOpenLibrary(query);
+    }
+};
 
-            // Recherche automatique avec système anti-rebond (Debounce)
-            React.useEffect(() => {
-                const timer = setTimeout(async () => {
-                    if (searchQuery.trim().length > 1) {
-                        setIsLoading(true);
-                        setApiError(false);
-                        try {
-                            const results = await searchBooks(searchQuery);
-                            setApiResults(results);
-                        } catch (err) {
-                            setApiResults([]);
-                            setApiError(true);
-                        } finally {
-                            setIsLoading(false);
-                        }
-                    } else {
-                        setApiResults([]);
-                        setApiError(false);
-                    }
-                }, 500);
+// ================= APP =================
+const MediathequeApp = () => {
+    const [books, setBooks] = React.useState(() =>
+        JSON.parse(localStorage.getItem("mediatheque_books") || "[]")
+    );
 
-                return () => clearTimeout(timer);
-            }, [searchQuery]);
+    const [searchQuery, setSearchQuery] = React.useState("");
+    const [apiResults, setApiResults] = React.useState([]);
 
-            // Actions d'ajout, édition et suppression
-            const handleAddBook = (bookData) => {
-                const isDuplicate = books.some(b => b.title.toLowerCase() === bookData.title.toLowerCase() && b.author.toLowerCase() === bookData.author.toLowerCase());
-                if (isDuplicate) {
-                    alert("Ce livre est déjà présent dans votre médiathèque.");
-                    return;
-                }
+    React.useEffect(() => {
+        localStorage.setItem("mediatheque_books", JSON.stringify(books));
+    }, [books]);
 
-                const newBook = {
-                    id: `local-${Date.now()}`,
-                    title: bookData.title,
-                    author: bookData.author,
-                    isbn: bookData.isbn || "Non spécifié",
-                    status: "disponible",
-                    borrower: "",
-                    borrowDate: "",
-                    addedAt: new Date().toLocaleDateString("fr-FR")
-                };
-
-                setBooks([newBook, ...books]);
-                setSearchQuery("");
+    React.useEffect(() => {
+        const t = setTimeout(async () => {
+            if (searchQuery.length > 1) {
+                const res = await searchBooks(searchQuery);
+                setApiResults(res);
+            } else {
                 setApiResults([]);
-            };
+            }
+        }, 500);
 
-            const handleManualSubmit = (e) => {
-                e.preventDefault();
-                if (!manualTitle.trim() || !manualAuthor.trim()) return;
+        return () => clearTimeout(t);
+    }, [searchQuery]);
 
-                if (editingId) {
-                    setBooks(books.map(b => b.id === editingId ? { ...b, title: manualTitle, author: manualAuthor, isbn: manualIsbn || "Non spécifié" } : b));
-                    setEditingId(null);
-                } else {
-                    handleAddBook({ title: manualTitle, author: manualAuthor, isbn: manualIsbn });
-                }
+    const addBook = (b) => {
+        setBooks(prev => [
+            { ...b, status: "disponible", addedAt: new Date().toLocaleDateString("fr-FR") },
+            ...prev
+        ]);
+        setSearchQuery("");
+        setApiResults([]);
+    };
 
-                setManualTitle("");
-                setManualAuthor("");
-                setManualIsbn("");
-            };
+    return (
+        <div className="max-w-6xl mx-auto p-6">
 
-            const handleToggleStatus = (id) => {
-                setBooks(books.map(book => {
-                    if (book.id === id) {
-                        const isAvailable = book.status === "disponible";
-                        return {
-                            ...book,
-                            status: isAvailable ? "emprunte" : "disponible",
-                            borrower: isAvailable ? (prompt("Nom de l'emprunteur :") || "Inconnu") : "",
-                            borrowDate: isAvailable ? new Date().toLocaleDateString("fr-FR") : ""
-                        };
-                    }
-                    return book;
-                }));
-            };
+            <h1 className="text-2xl font-bold mb-6">Ma Médiathèque</h1>
 
-            const handleStartEdit = (book) => {
-                setEditingId(book.id);
-                setManualTitle(book.title);
-                setManualAuthor(book.author);
-                setManualIsbn(book.isbn === "Non spécifié" ? "" : book.isbn);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-            };
+            <input
+                className="w-full p-3 border rounded-xl"
+                placeholder="Rechercher un livre..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+            />
 
-            const handleDeleteBook = (id) => {
-                if (confirm("Confirmez-vous la suppression de cet ouvrage ?")) {
-                    setBooks(books.filter(b => b.id !== id));
-                }
-            };
-
-            const filteredBooks = books.filter(book => {
-                if (filter === "disponible") return book.status === "disponible";
-                if (filter === "emprunte") return book.status === "emprunte";
-                return true;
-            });
-
-            return (
-                <div class="max-w-7xl mx-auto px-4 py-8">
-                    {/* En-tête de l'application */}
-                    <header class="flex flex-col md:flex-row items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-200">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-100">
-                                <Icon name="Library" className="w-7 h-7" />
-                            </div>
+            {apiResults.length > 0 && (
+                <div className="mt-3 bg-white border rounded-xl">
+                    {apiResults.map(b => (
+                        <div key={b.id} className="p-3 flex justify-between">
                             <div>
-                                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Ma Médiathèque</h1>
-                                <p class="text-sm text-slate-500">Gestion de catalogue personnel et suivi des prêts</p>
+                                <div className="font-semibold">{b.title}</div>
+                                <div className="text-sm text-gray-500">{b.author}</div>
                             </div>
+                            <button onClick={() => addBook(b)}>Ajouter</button>
                         </div>
-                        
-                        {/* Statistiques rapides */}
-                        <div class="flex gap-4 bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                            <div class="px-4 py-2 text-center border-r border-slate-100">
-                                <span class="block text-xl font-bold text-slate-900">{books.length}</span>
-                                <span class="text-xs text-slate-400 font-medium uppercase">Total</span>
-                            </div>
-                            <div class="px-4 py-2 text-center border-r border-slate-100">
-                                <span class="block text-xl font-bold text-emerald-600">{books.filter(b => b.status === "disponible").length}</span>
-                                <span class="text-xs text-slate-400 font-medium uppercase">Dispo</span>
-                            </div>
-                            <div class="px-4 py-2 text-center">
-                                <span class="block text-xl font-bold text-amber-500">{books.filter(b => b.status === "emprunte").length}</span>
-                                <span class="text-xs text-slate-400 font-medium uppercase">Prêtés</span>
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* Contenu principal sur deux colonnes */}
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        
-                        {/* COLONNE GAUCHE : Recherche et Formulaires */}
-                        <div class="space-y-6 lg:sticky lg:top-6">
-                            
-                            {/* Bloc Recherche Intelligente */}
-                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
-                                <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                    <Icon name="Search" className="w-4 h-4 text-indigo-500" />
-                                    Recherche automatique (BnF / OpenLibrary)
-                                </h2>
-                                <div class="relative">
-                                    <input 
-                                        type="text"
-                                        placeholder="Titre, auteur, mot-clé..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                    />
-                                    <div class="absolute right-3 top-3 text-slate-400">
-                                        {isLoading ? (
-                                            <div class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                        ) : (
-                                            <Icon name="Sparkles" className="w-4 h-4" />
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Fenêtre déroulante des suggestions d'API */}
-                                {apiResults.length > 0 && (
-                                    <div class="mt-3 border border-slate-200 rounded-xl bg-white shadow-xl max-h-64 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
-                                        {apiResults.map((result) => (
-                                            <div key={result.id} class="p-3 hover:bg-slate-50 flex items-center justify-between gap-4 transition-colors">
-                                                <div class="min-w-0">
-                                                    <h4 class="text-sm font-medium text-slate-900 truncate">{result.title}</h4>
-                                                    <p class="text-xs text-slate-500 truncate">{result.author}</p>
-                                                    <span class="inline-block mt-1 text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
-                                                        {result.source}
-                                                    </span>
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleAddBook(result)}
-                                                    class="flex-shrink-0 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white p-2 rounded-lg transition-all"
-                                                    title="Ajouter à ma collection"
-                                                >
-                                                    <Icon name="Plus" className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {apiError && (
-                                    <div class="mt-3 p-3 bg-amber-50 border border-amber-100 text-amber-800 rounded-xl text-xs flex items-start gap-2">
-                                        <Icon name="AlertCircle" className="w-4 h-4 text-amber-600 mt-0.5" />
-                                        <span>Impossible de contacter les serveurs distants. Utilisation de la saisie manuelle ci-dessous.</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Bloc Formulaire Manuel / Modification */}
-                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
-                                <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                    <Icon name={editingId ? "Edit3" : "PlusCircle"} className="w-4 h-4 text-indigo-500" />
-                                    {editingId ? "Modifier la fiche de l'ouvrage" : "Saisie manuelle d'un ouvrage"}
-                                </h2>
-                                <form onSubmit={handleManualSubmit} class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Titre de l'œuvre *</label>
-                                        <input 
-                                            type="text" required value={manualTitle}
-                                            onChange={(e) => setManualTitle(e.target.value)}
-                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Auteur / Créateur *</label>
-                                        <input 
-                                            type="text" required value={manualAuthor}
-                                            onChange={(e) => setManualAuthor(e.target.value)}
-                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Numéro ISBN (Optionnel)</label>
-                                        <input 
-                                            type="text" value={manualIsbn}
-                                            onChange={(e) => setManualIsbn(e.target.value)}
-                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                        />
-                                    </div>
-                                    <div class="flex gap-2 pt-2">
-                                        <button type="submit" class="flex-1 bg-slate-900 text-white font-medium py-2 px-4 rounded-xl text-sm hover:bg-slate-800 transition-colors shadow-sm">
-                                            {editingId ? "Valider le changement" : "Ajouter à la bibliothèque"}
-                                        </button>
-                                        {editingId && (
-                                            <button 
-                                                type="button" 
-                                                onClick={() => {
-                                                    setEditingId(null);
-                                                    setManualTitle(""); setManualAuthor(""); setManualIsbn("");
-                                                }}
-                                                class="bg-slate-100 text-slate-600 font-medium py-2 px-4 rounded-xl text-sm hover:bg-slate-200 transition-colors"
-                                            >
-                                                Annuler
-                                            </button>
-                                        )}
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        {/* COLONNE DROITE : Liste du Catalogue */}
-                        <div class="lg:col-span-2 space-y-6">
-                            
-                            {/* Barre de Filtrage de la Collection */}
-                            <div class="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-slate-200/80">
-                                <span class="text-sm font-semibold text-slate-700 pl-2">Ma Collection ({filteredBooks.length})</span>
-                                <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                                    <button 
-                                        onClick={() => setFilter("all")}
-                                        class={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${filter === "all" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                                    >
-                                        Tous
-                                    </button>
-                                    <button 
-                                        onClick={() => setFilter("disponible")}
-                                        class={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${filter === "disponible" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                                    >
-                                        Disponibles
-                                    </button>
-                                    <button 
-                                        onClick={() => setFilter("emprunte")}
-                                        class={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${filter === "emprunte" ? "bg-white text-amber-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                                    >
-                                        Prêtés
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Grille des Livres Enregistrés */}
-                            {filteredBooks.length === 0 ? (
-                                <div class="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center text-slate-400">
-                                    <Icon name="Inbox" className="w-10 h-10 mx-auto mb-3 opacity-60" />
-                                    <p class="text-sm font-medium">Aucun ouvrage ne correspond aux critères sélectionnés.</p>
-                                </div>
-                            ) : (
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {filteredBooks.map((book) => (
-                                        <div key={book.id} class="book-card bg-white p-5 rounded-2xl border border-slate-200/70 shadow-sm flex flex-col justify-between group relative overflow-hidden">
-                                            
-                                            {/* Indicateur de statut visuel discret sur la bordure */}
-                                            <div class={`absolute top-0 left-0 bottom-0 w-1 ${book.status === 'disponible' ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
-
-                                            <div>
-                                                {/* Titre et Menu d'action rapide */}
-                                                <div class="flex justify-between items-start gap-2 mb-1">
-                                                    <h3 class="font-bold text-slate-900 text-base leading-snug line-clamp-2">{book.title}</h3>
-                                                    <div class="flex gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button 
-                                                            onClick={() => handleStartEdit(book)}
-                                                            class="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
-                                                            title="Éditer"
-                                                        >
-                                                            <Icon name="Edit" className="w-4 h-4" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleDeleteBook(book.id)}
-                                                            class="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                                                            title="Supprimer"
-                                                        >
-                                                            <Icon name="Trash2" className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <p class="text-sm text-slate-600 font-medium mb-3">{book.author}</p>
-                                                
-                                                <div class="space-y-1.5 text-xs text-slate-400 border-t border-slate-50 pt-3">
-                                                    <div class="flex items-center gap-1.5">
-                                                        <Icon name="Barcode" className="w-3.5 h-3.5 text-slate-300" />
-                                                        <span>ISBN : <span class="text-slate-500 font-mono">{book.isbn}</span></span>
-                                                    </div>
-                                                    <div class="flex items-center gap-1.5">
-                                                        <Icon name="Calendar" className="w-3.5 h-3.5 text-slate-300" />
-                                                        <span>Ajouté le : <span class="text-slate-500">{book.addedAt}</span></span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Bloc d'état d'emprunt */}
-                                            <div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                                                <div class="min-w-0">
-                                                    {book.status === "emprunte" ? (
-                                                        <div class="text-xs text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5">
-                                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                                            <span class="truncate">Chez {book.borrower} ({book.borrowDate})</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div class="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 w-max">
-                                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                            <span>Sur les étagères</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <button 
-                                                    onClick={() => handleToggleStatus(book.id)}
-                                                    class={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                                                        book.status === "emprunte"
-                                                            ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                                                            : "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white"
-                                                    }`}
-                                                >
-                                                    {book.status === "emprunte" ? "Retour" : "Prêter"}
-                                                </button>
-                                            </div>
-
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                        </div>
-                    </div>
+                    ))}
                 </div>
-            );
-        };
+            )}
 
-        // Rendu final de l'application dans la racine HTML
-        const root = ReactDOM.createRoot(document.getElementById("app"));
-        root.render(<MediathequeApp />);
-    </script>
+            <div className="mt-6 grid gap-3">
+                {books.map(b => (
+                    <div key={b.id} className="p-3 bg-white rounded-xl shadow">
+                        <div className="font-semibold">{b.title}</div>
+                        <div className="text-sm text-gray-500">{b.author}</div>
+                    </div>
+                ))}
+            </div>
+
+        </div>
+    );
+};
+
+const root = ReactDOM.createRoot(document.getElementById("app"));
+root.render(<MediathequeApp />);
+
+</script>
 </body>
 </html>
