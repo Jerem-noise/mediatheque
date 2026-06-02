@@ -1,149 +1,202 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Médiathèque</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma Médiathèque - Gestion de Bibliothèque</title>
 
-<style>
-body {
-  margin:0;
-  font-family:-apple-system, system-ui, sans-serif;
-  background: linear-gradient(135deg,#f5f7ff,#fdf0ff);
-  -webkit-font-smoothing: antialiased;
-}
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
-header {
-  padding:40px 20px 20px;
-  text-align:center;
-  color:white;
-  background: linear-gradient(135deg,#1a1a2e,#16213e);
-}
+    <!-- React -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
 
-h1 { margin:0; font-size:26px; }
+    <!-- Babel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
-.container {
-  max-width:600px;
-  margin:auto;
-  padding:16px;
-}
-
-.card {
-  background:white;
-  border-radius:16px;
-  padding:14px;
-  margin-bottom:12px;
-  box-shadow:0 4px 20px rgba(0,0,0,0.08);
-  transform: translateY(0);
-  transition: 0.2s;
-}
-
-.card:active {
-  transform: scale(0.98);
-}
-
-input {
-  width:100%;
-  padding:12px;
-  border-radius:12px;
-  border:1px solid #ddd;
-  margin-bottom:10px;
-  font-size:16px;
-}
-
-button {
-  width:100%;
-  padding:12px;
-  border-radius:12px;
-  border:none;
-  background:#4a6fa5;
-  color:white;
-  font-weight:600;
-  font-size:16px;
-}
-
-.list {
-  margin-top:15px;
-}
-
-.badge {
-  font-size:12px;
-  padding:4px 10px;
-  border-radius:20px;
-  background:#eee;
-  display:inline-block;
-  margin-top:6px;
-}
-</style>
+    <style>
+        .book-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .book-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.15);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
 </head>
+<body className="bg-slate-50 text-slate-800 min-h-screen">
+    <div id="app"></div>
 
-<body>
+    <script type="text/babel">
+        // --- Composant Icon avec SVG inline (remplace Lucide CDN) ---
+        const Icon = ({ name, className = "w-5 h-5", ...props }) => {
+            const icons = {
+                Library: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>,
+                Search: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>,
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
+                Edit: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
+                Trash2: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>,
+                Inbox: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V13" /><path d="M10 10.5V8a2 2 0 0 1 4 0v2.5" /></svg>,
+                AlertCircle: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
+                Barcode: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="3" x2="21" y2="3" /><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="11" x2="21" y2="11" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="3" y1="19" x2="21" y2="19" /></svg>,
+                Calendar: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
+                Sparkles: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>,
+                Edit3: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>,
+                PlusCircle: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
+            };
+            return icons[name] || <span>❓</span>;
+        };
 
-<header>
-  <h1>📚 Médiathèque</h1>
-</header>
+        // --- SERVICES API & PROXY ---
+        const PROXIES = [
+            "https://proxy-bnf.batteux-jerem.workers.dev/?url=",
+            "https://corsproxy.io/?",
+            "https://api.allorigins.win/get?url="
+        ];
 
-<div class="container">
+        const fetchWithProxy = async (targetUrl) => {
+            let lastError = null;
+            for (const proxy of PROXIES) {
+                try {
+                    const url = proxy.includes("allorigins") || proxy.includes("workers.dev")
+                        ? `${proxy}${encodeURIComponent(targetUrl)}`
+                        : `${proxy}${targetUrl}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const text = await response.text();
+                    if (proxy.includes("allorigins")) {
+                        const json = JSON.parse(text);
+                        return json.contents;
+                    }
+                    return text;
+                } catch (err) {
+                    console.warn(`Proxy ${proxy} échoué:`, err.message);
+                    lastError = err;
+                }
+            }
+            throw new Error("Tous les proxys CORS ont échoué.");
+        };
 
-  <input id="title" placeholder="Titre du livre">
-  <input id="author" placeholder="Auteur">
-  <button onclick="addBook()">Ajouter</button>
+        const searchBnf = async (query) => {
+            try {
+                const bnfUrl = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20all%20%22${encodeURIComponent(query)}%22%20and%20bib.recordtype%20all%20%22a%22&maximumRecords=8`;
+                const responseText = await fetchWithProxy(bnfUrl);
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(responseText, "text/xml");
+                if (xmlDoc.querySelector("parsererror")) {
+                    throw new Error("Erreur de formatage des données distantes.");
+                }
+                const records = xmlDoc.getElementsByTagName("srw:record");
+                const books = [];
+                for (let i = 0; i < records.length; i++) {
+                    const record = records[i];
+                    const title = record.getElementsByTagName("dc:title")[0]?.textContent || "Titre inconnu";
+                    const creator = record.getElementsByTagName("dc:creator")[0]?.textContent || "Auteur inconnu";
+                    const identifier = record.getElementsByTagName("dc:identifier")[0]?.textContent || "";
+                    const isbn = identifier.includes("ISBN") ? identifier.replace(/ISBN\s*/i, "").trim() : "";
+                    books.push({
+                        id: `bnf-${i}-${Date.now()}`,
+                        title: title,
+                        author: creator,
+                        isbn: isbn,
+                        source: "BnF"
+                    });
+                }
+                return books;
+            } catch (err) {
+                console.error("Erreur BnF:", err);
+                throw err;
+            }
+        };
 
-  <div class="list" id="list"></div>
+        const searchOpenLibrary = async (query) => {
+            try {
+                const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8`;
+                const responseText = await fetchWithProxy(olUrl);
+                const data = JSON.parse(responseText);
+                return (data.docs || []).map((doc, index) => ({
+                    id: `ol-${index}-${Date.now()}`,
+                    title: doc.title || "Titre inconnu",
+                    author: doc.author_name?.[0] || "Auteur inconnu",
+                    isbn: doc.isbn?.[0] || "",
+                    source: "OpenLibrary"
+                }));
+            } catch (err) {
+                console.error("Erreur OpenLibrary:", err);
+                throw err;
+            }
+        };
 
-</div>
+        const searchBooks = async (query) => {
+            if (!query || query.trim().length < 2) return [];
+            try {
+                return await searchBnf(query);
+            } catch (bnfError) {
+                console.warn("Échec BnF, bascule sur OpenLibrary...");
+                try {
+                    return await searchOpenLibrary(query);
+                } catch (olError) {
+                    throw new Error("Impossible de contacter les APIs de recherche.");
+                }
+            }
+        };
 
-<script>
-let books = JSON.parse(localStorage.getItem("books") || "[]");
+        // --- APPLICATION PRINCIPALE (REACT) ---
+        const MediathequeApp = () => {
+            const [books, setBooks] = React.useState(() => {
+                const saved = localStorage.getItem("mediatheque_books");
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [searchQuery, setSearchQuery] = React.useState("");
+            const [apiResults, setApiResults] = React.useState([]);
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [apiError, setApiError] = React.useState(false);
+            const [filter, setFilter] = React.useState("all");
+            const [manualTitle, setManualTitle] = React.useState("");
+            const [manualAuthor, setManualAuthor] = React.useState("");
+            const [manualIsbn, setManualIsbn] = React.useState("");
+            const [editingId, setEditingId] = React.useState(null);
 
-function save(){
-  localStorage.setItem("books", JSON.stringify(books));
-}
+            React.useEffect(() => {
+                localStorage.setItem("mediatheque_books", JSON.stringify(books));
+            }, [books]);
 
-function addBook(){
-  const t = document.getElementById("title").value;
-  const a = document.getElementById("author").value;
+            React.useEffect(() => {
+                const timer = setTimeout(async () => {
+                    if (searchQuery.trim().length > 1) {
+                        setIsLoading(true);
+                        setApiError(false);
+                        try {
+                            const results = await searchBooks(searchQuery);
+                            setApiResults(results);
+                        } catch (err) {
+                            setApiResults([]);
+                            setApiError(true);
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    } else {
+                        setApiResults([]);
+                        setApiError(false);
+                    }
+                }, 500);
+                return () => clearTimeout(timer);
+            }, [searchQuery]);
 
-  if(!t) return;
-
-  books.unshift({
-    id: Date.now(),
-    title:t,
-    author:a
-  });
-
-  save();
-  render();
-
-  document.getElementById("title").value="";
-  document.getElementById("author").value="";
-}
-
-function render(){
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-
-  books.forEach(b => {
-    const div = document.createElement("div");
-    div.className="card";
-    div.innerHTML = `
-      <div><strong>${b.title}</strong></div>
-      <div style="opacity:.6">${b.author || ""}</div>
-      <div class="badge">tap = supprimer</div>
-    `;
-
-    div.onclick = () => {
-      books = books.filter(x => x.id !== b.id);
-      save();
-      render();
-    };
-
-    list.appendChild(div);
-  });
-}
-
-render();
-</script>
-
-</body>
-</html>
+            const handleAddBook = (bookData) => {
+                const isDuplicate = books.some(b => b.title.toLowerCase() === bookData.title.toLowerCase() && b.author.toLowerCase() === bookData.author.toLowerCase());
+                if (isDuplicate) {
