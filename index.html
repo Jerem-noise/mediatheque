@@ -758,14 +758,21 @@
     const searchBooks = async (query) => {
       if (query.length < 2) return [];
       try {
+        // On interroge UNIQUEMENT votre worker Cloudflare qui sert de bouclier
         const response = await fetch(`${WORKER_URL}?q=${encodeURIComponent(query)}`);
-        if (!response.ok) throw new Error("Erreur de communication avec le proxy Cloudflare");
+        
+        if (!response.ok) {
+          throw new Error(`Le Worker a répondu avec un statut : ${response.status}`);
+        }
 
-        return await response.json();
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+
       } catch (error) {
-        console.error("Erreur recherche Proxy:", error);
-        // En cas de panne de l'API, on ne bloque pas l'utilisateur, le système proposera l'ajout manuel
-        return [];
+        // En cas de coupure réseau ou problème de Worker, on log l'erreur proprement 
+        // sans faire cracher l'interface utilisateur.
+        console.warn("Mode dégradé (Proxy indisponible) :", error.message);
+        return []; 
       }
     };
     // ==================== TOAST NOTIFICATIONS ====================
