@@ -39,7 +39,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
 <script type="text/babel">
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef } = React;
 
 const MEMBERS = ["Jérémy", "Marion"];
 const RATINGS = [1, 2, 3, 4, 5];
@@ -101,23 +101,25 @@ function addToCalendar(book) {
   }
 }
 
-// Recherche Google Books en français
+// Recherche Open Library — pas de problème CORS, supporte le français
 let searchTimeout = null;
 async function searchBooks(query) {
   if (query.length < 2) return [];
-  const q = encodeURIComponent(query);
-  // langRestrict=fr pour livres en français, country=FR pour éditions françaises
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&langRestrict=fr&maxResults=8&printType=books&fields=items(volumeInfo/title,volumeInfo/authors,volumeInfo/imageLinks,volumeInfo/categories)`;
   try {
+    const q = encodeURIComponent(query);
+    // lang=fre pour livres en français
+    const url = `https://openlibrary.org/search.json?q=${q}&lang=fre&limit=8&fields=title,author_name,cover_i,first_publish_year,subject`;
     const res = await fetch(url);
     const data = await res.json();
-    if (!data.items) return [];
-    return data.items.map(item => ({
-      title: item.volumeInfo.title || "",
-      author: (item.volumeInfo.authors || []).join(", "),
-      cover: item.volumeInfo.imageLinks?.smallThumbnail || null,
-      category: (item.volumeInfo.categories || [])[0] || "",
-    })).filter(b => b.title);
+    if (!data.docs) return [];
+    return data.docs
+      .filter(d => d.title)
+      .map(d => ({
+        title: d.title,
+        author: (d.author_name || []).slice(0,2).join(", "),
+        cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-S.jpg` : null,
+        year: d.first_publish_year || "",
+      }));
   } catch (e) {
     return [];
   }
@@ -131,7 +133,9 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
   const wrapperRef = useRef(null);
 
   useEffect(() => {
-    const handleClick = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShowList(false); };
+    const handleClick = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShowList(false);
+    };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
@@ -147,7 +151,7 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
         setSuggestions(results);
         setShowList(results.length > 0);
         setLoading(false);
-      }, 350);
+      }, 400);
     } else {
       setSuggestions([]);
       setShowList(false);
@@ -191,16 +195,17 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
       {showList && suggestions.length > 0 && (
         <div className="autocomplete-list">
           {suggestions.map((book, i) => (
-            <div key={i} className={`autocomplete-item${i === activeIdx ? " active" : ""}`}
+            <div key={i}
+              className={`autocomplete-item${i === activeIdx ? " active" : ""}`}
               onMouseDown={() => handleSelect(book)}>
               {book.cover
-                ? <img src={book.cover} alt="" style={{width:32,height:45,objectFit:"cover",borderRadius:4,flexShrink:0}}/>
-                : <div style={{width:32,height:45,background:"#f0f0f0",borderRadius:4,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>📖</div>
+                ? <img src={book.cover} alt="" style={{width:30,height:42,objectFit:"cover",borderRadius:3,flexShrink:0}} onError={e=>e.target.style.display='none'}/>
+                : <div style={{width:30,height:42,background:"#f0f0f0",borderRadius:3,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📖</div>
               }
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#1a1a2e",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.title}</div>
-                <div style={{fontSize:12,color:"#888",marginTop:2}}>{book.author}</div>
-                {book.category && <div style={{fontSize:11,color:"#4a6fa5",marginTop:1}}>{book.category}</div>}
+                {book.author && <div style={{fontSize:12,color:"#888",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.author}</div>}
+                {book.year && <div style={{fontSize:11,color:"#4a6fa5",marginTop:1}}>{book.year}</div>}
               </div>
             </div>
           ))}
