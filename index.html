@@ -66,7 +66,7 @@
     // ==================== CONSTANTES ====================
     const MEMBERS = ["Jérémy", "Marion"];
     const RATINGS = [1, 2, 3, 4, 5];
-    const STORAGE_KEY = "mediatheque_books_v8";
+    const STORAGE_KEY = "mediatheque_books_v9";
 
     const SCHOOL_HOLIDAYS = [
       { start: "2024-10-19", end: "2024-11-04" },
@@ -182,10 +182,10 @@
       }
     };
 
-    // ==================== API BnF (avec contournement CORS) ====================
+    // ==================== API (BnF + Open Library) ====================
     let searchTimeout = null;
 
-    // Liste des proxys CORS publics (testés en 2026)
+    // Liste des proxys CORS pour la BnF
     const CORS_PROXIES = [
       "https://corsproxy.io/?",
       "https://thingproxy.freeboard.io/fetch/",
@@ -209,7 +209,6 @@
 
           if (res.ok) {
             const data = await res.json();
-            // Pour api.allorigins.win, les données sont dans data.contents
             if (data.contents) {
               return JSON.parse(data.contents);
             }
@@ -227,24 +226,33 @@
       if (query.length < 2) return [];
 
       try {
-        const results = await searchBnf(query);
-        if (results.length > 0) {
-          return results;
-        } else {
-          // Option manuelle si aucun résultat
-          return [{
-            title: query,
-            author: "",
-            cover: null,
-            isbn: "",
-            year: "",
-            source: "manual",
-            isManual: true
-          }];
+        // 1. Essayer la BnF en premier (meilleure couverture FR)
+        const bnfResults = await searchBnf(query);
+        if (bnfResults.length > 0) {
+          console.log("Résultats BnF obtenus.");
+          return bnfResults;
         }
+
+        // 2. Fallback sur Open Library
+        const olResults = await searchOpenLibrary(query);
+        if (olResults.length > 0) {
+          console.log("Résultats OpenLibrary obtenus.");
+          return olResults;
+        }
+
+        // 3. Aucun résultat : proposer une option manuelle
+        return [{
+          title: query,
+          author: "",
+          cover: null,
+          isbn: "",
+          year: "",
+          source: "manual",
+          isManual: true
+        }];
       } catch (e) {
-        console.error("Erreur recherche BnF:", e);
-        showToast("Impossible de contacter la BnF. Saisie manuelle activée.", "error");
+        console.error("Erreur recherche:", e);
+        showToast("Impossible de contacter les APIs. Saisie manuelle activée.", "error");
         return [{
           title: query,
           author: "",
@@ -257,6 +265,7 @@
       }
     };
 
+    // Recherche BnF avec JSON et contournement CORS
     const searchBnf = async (query) => {
       const q = encodeURIComponent(query);
       const bnfUrl = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20all%20%22${q}%22%20and%20bib.recordtype%20all%20%22a%22&recordSchema=json&maximumRecords=8`;
@@ -270,6 +279,7 @@
       }
     };
 
+    // Parsing du JSON BnF
     const parseBnfJson = (data) => {
       if (!data || !data.records || !Array.isArray(data.records)) {
         console.warn("Format BnF inattendu:", data);
@@ -324,6 +334,30 @@
           return null;
         }
       }).filter(book => book !== null);
+    };
+
+    // Recherche Open Library (fallback)
+    const searchOpenLibrary = async (query) => {
+      const q = encodeURIComponent(query);
+      const url = `https://openlibrary.org/search.json?q=${q}&lang=fre&limit=8&fields=title,author_name,cover_i,isbn,first_publish_year`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`OpenLibrary error: ${res.status}`);
+
+        const data = await res.json();
+        return (data.docs || []).map(d => ({
+          title: d.title || "Titre inconnu",
+          author: (d.author_name || ["Auteur inconnu"]).slice(0, 2).join(", "),
+          cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+          isbn: d.isbn?.[0] || "",
+          year: d.first_publish_year ? d.first_publish_year.toString() : "",
+          source: "OpenLibrary"
+        }));
+      } catch (e) {
+        console.error("Erreur OpenLibrary:", e);
+        throw e;
+      }
     };
 
     // --- Calendrier ---
