@@ -42,23 +42,48 @@
     <div id="app"></div>
 
     <script type="text/babel">
-        // --- COMPOSANTS D'ICÔNES LUCIDE ---
-        const Icon = ({ name, className = "w-5 h-5", ...props }) => {
-            const [iconHtml, setIconHtml] = React.useState("");
+ // --- COMPOSANTS D'ICÔNES LUCIDE ---
+const Icon = ({ name, className = "w-5 h-5", ...props }) => {
+    const [iconHtml, setIconHtml] = React.useState("");
 
-            React.useEffect(() => {
-                if (window.lucide && window.lucide.icons[name]) {
-                    const svgString = window.lucide.createSvgStr(name, {
-                        class: className,
-                        ...props
-                    });
-                    setIconHtml(svgString);
-                }
-            }, [name, className, props]);
+    React.useEffect(() => {
+        // Version standard de Lucide pour générer l'icône proprement
+        if (window.lucide && window.lucide.icons[name]) {
+            const icon = window.lucide.icons[name];
+            // On génère les attributs sous forme de chaîne
+            const attributes = {
+                xmlns: "http://www.w3.org/2000/svg",
+                width: "24",
+                height: "24",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                "stroke-width": "2",
+                "stroke-linecap": "round",
+                "stroke-linejoin": "round",
+                class: className,
+                ...props
+            };
+            
+            const attrString = Object.entries(attributes)
+                .map(([k, v]) => `${k}="${v}"`)
+                .join(" ");
 
-            return <span dangerouslySetInnerHTML={{ __html: iconHtml }} class="inline-flex items-center justify-center" />;
-        };
+            // On extrait le contenu des chemins de l'icône
+            const childNodes = icon[1].map(node => {
+                const nodeAttrs = Object.entries(node[1])
+                    .map(([k, v]) => `${k}="${v}"`)
+                    .join(" ");
+                return `<${node[0]} ${nodeAttrs} />`;
+            }).join("");
 
+            setIconHtml(`<svg ${attrString}>${childNodes}</svg>`);
+        }
+    }, [name, className, JSON.stringify(props)]);
+
+    // Correction ici : Utilisation de className au lieu de class pour React
+    return <span dangerouslySetInnerHTML={{ __html: iconHtml }} className="inline-flex items-center justify-center" />;
+};
         // --- SERVICES API & PROXY ---
         // Liste des proxys CORS pour contourner les restrictions des API publiques
         const PROXIES = [
