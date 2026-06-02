@@ -17,17 +17,18 @@
       position: absolute; z-index: 1000; background: #fff;
       border: 1.5px solid #c5d8f5; border-radius: 10px;
       box-shadow: 0 4px 20px rgba(74,111,165,0.15);
-      max-height: 220px; overflow-y: auto; width: 100%;
-      left: 0; top: 100%;
+      max-height: 280px; overflow-y: auto; width: 100%; left: 0; top: 100%;
     }
     .autocomplete-item {
-      padding: 10px 14px; cursor: pointer; font-size: 14px;
+      padding: 10px 12px; cursor: pointer;
       border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: 10px;
     }
     .autocomplete-item:last-child { border-bottom: none; }
-    .autocomplete-item:hover, .autocomplete-item.active { background: #f0f4ff; color: #4a6fa5; }
-    .autocomplete-item .author { font-size: 11px; color: #999; margin-top: 1px; }
+    .autocomplete-item:hover, .autocomplete-item.active { background: #f0f4ff; }
     .autocomplete-wrapper { position: relative; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ddd; border-top-color: #4a6fa5; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -38,139 +39,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef, useCallback } = React;
 
 const MEMBERS = ["Jérémy", "Marion"];
 const RATINGS = [1, 2, 3, 4, 5];
-
-// Base de livres par catégorie
-const BOOKS_DB = [
-  // BD / Mangas
-  { title: "Astérix et Obélix", author: "Goscinny & Uderzo", cat: "BD" },
-  { title: "Tintin au Tibet", author: "Hergé", cat: "BD" },
-  { title: "Lucky Luke", author: "Morris", cat: "BD" },
-  { title: "Les Schtroumpfs", author: "Peyo", cat: "BD" },
-  { title: "Gaston Lagaffe", author: "Franquin", cat: "BD" },
-  { title: "Naruto", author: "Masashi Kishimoto", cat: "Manga" },
-  { title: "One Piece", author: "Eiichiro Oda", cat: "Manga" },
-  { title: "Dragon Ball", author: "Akira Toriyama", cat: "Manga" },
-  { title: "Bleach", author: "Tite Kubo", cat: "Manga" },
-  { title: "L'Attaque des Titans", author: "Hajime Isayama", cat: "Manga" },
-  { title: "My Hero Academia", author: "Kōhei Horikoshi", cat: "Manga" },
-  { title: "Demon Slayer", author: "Koyoharu Gotouge", cat: "Manga" },
-  { title: "Death Note", author: "Tsugumi Ohba", cat: "Manga" },
-  { title: "Fullmetal Alchemist", author: "Hiromu Arakawa", cat: "Manga" },
-  { title: "Vinland Saga", author: "Makoto Yukimura", cat: "Manga" },
-  { title: "Jujutsu Kaisen", author: "Gege Akutami", cat: "Manga" },
-  { title: "Spy x Family", author: "Tatsuya Endo", cat: "Manga" },
-  { title: "Chainsaw Man", author: "Tatsuki Fujimoto", cat: "Manga" },
-  { title: "Berserk", author: "Kentaro Miura", cat: "Manga" },
-  { title: "Slam Dunk", author: "Takehiko Inoue", cat: "Manga" },
-  { title: "Blacksad", author: "Guarnido & Díaz Canales", cat: "BD" },
-  { title: "XIII", author: "Vance & Van Hamme", cat: "BD" },
-  { title: "Thorgal", author: "Rosinski & Van Hamme", cat: "BD" },
-  { title: "Blake et Mortimer", author: "Edgar P. Jacobs", cat: "BD" },
-  { title: "Spirou et Fantasio", author: "Franquin", cat: "BD" },
-  { title: "Les Ignorants", author: "Étienne Davodeau", cat: "BD" },
-  { title: "Persepolis", author: "Marjane Satrapi", cat: "BD" },
-  { title: "Maus", author: "Art Spiegelman", cat: "BD" },
-  { title: "L'Arabe du futur", author: "Riad Sattouf", cat: "BD" },
-
-  // Jeunesse / Ados
-  { title: "Harry Potter à l'école des sorciers", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Harry Potter et la Chambre des secrets", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Harry Potter et le Prisonnier d'Azkaban", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Harry Potter et la Coupe de feu", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Harry Potter et l'Ordre du Phénix", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Harry Potter et le Prince de Sang-Mêlé", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Harry Potter et les Reliques de la Mort", author: "J.K. Rowling", cat: "Jeunesse" },
-  { title: "Le Petit Prince", author: "Antoine de Saint-Exupéry", cat: "Jeunesse" },
-  { title: "Charlie et la Chocolaterie", author: "Roald Dahl", cat: "Jeunesse" },
-  { title: "Matilda", author: "Roald Dahl", cat: "Jeunesse" },
-  { title: "James et la Grosse Pêche", author: "Roald Dahl", cat: "Jeunesse" },
-  { title: "Les Chroniques de Narnia", author: "C.S. Lewis", cat: "Jeunesse" },
-  { title: "Percy Jackson - Le Voleur de foudre", author: "Rick Riordan", cat: "Jeunesse" },
-  { title: "Percy Jackson - La Mer des monstres", author: "Rick Riordan", cat: "Jeunesse" },
-  { title: "Hunger Games", author: "Suzanne Collins", cat: "Ados" },
-  { title: "Divergente", author: "Veronica Roth", cat: "Ados" },
-  { title: "Le Labyrinthe", author: "James Dashner", cat: "Ados" },
-  { title: "Twilight", author: "Stephenie Meyer", cat: "Ados" },
-  { title: "Le journal d'un dégonflé", author: "Jeff Kinney", cat: "Jeunesse" },
-  { title: "Tom-Tom et Nana", author: "Jacqueline Cohen", cat: "Jeunesse" },
-  { title: "Chair de poule", author: "R.L. Stine", cat: "Jeunesse" },
-  { title: "Geronimo Stilton", author: "Elisabetta Dami", cat: "Jeunesse" },
-  { title: "Le monde de Narnia", author: "C.S. Lewis", cat: "Jeunesse" },
-  { title: "Tara Duncan", author: "Sophie Audouin-Mamikonian", cat: "Ados" },
-  { title: "Les Misérables (abrégé)", author: "Victor Hugo", cat: "Ados" },
-
-  // Fantasy / SF
-  { title: "Le Seigneur des Anneaux - La Communauté de l'Anneau", author: "J.R.R. Tolkien", cat: "Fantasy" },
-  { title: "Le Seigneur des Anneaux - Les Deux Tours", author: "J.R.R. Tolkien", cat: "Fantasy" },
-  { title: "Le Seigneur des Anneaux - Le Retour du Roi", author: "J.R.R. Tolkien", cat: "Fantasy" },
-  { title: "Le Hobbit", author: "J.R.R. Tolkien", cat: "Fantasy" },
-  { title: "Le Trône de Fer", author: "George R.R. Martin", cat: "Fantasy" },
-  { title: "Le Nom du Vent", author: "Patrick Rothfuss", cat: "Fantasy" },
-  { title: "La Peur du Sage", author: "Patrick Rothfuss", cat: "Fantasy" },
-  { title: "Eragon", author: "Christopher Paolini", cat: "Fantasy" },
-  { title: "Les Piliers de la Terre", author: "Ken Follett", cat: "Fantasy" },
-  { title: "Assassin's Apprentice", author: "Robin Hobb", cat: "Fantasy" },
-  { title: "L'Assassin royal", author: "Robin Hobb", cat: "Fantasy" },
-  { title: "Dune", author: "Frank Herbert", cat: "SF" },
-  { title: "Fondation", author: "Isaac Asimov", cat: "SF" },
-  { title: "1984", author: "George Orwell", cat: "SF" },
-  { title: "Le Meilleur des mondes", author: "Aldous Huxley", cat: "SF" },
-  { title: "Fahrenheit 451", author: "Ray Bradbury", cat: "SF" },
-  { title: "Ender's Game", author: "Orson Scott Card", cat: "SF" },
-  { title: "The Martian", author: "Andy Weir", cat: "SF" },
-  { title: "Ready Player One", author: "Ernest Cline", cat: "SF" },
-  { title: "L'Étranger", author: "Albert Camus", cat: "Roman" },
-  { title: "Warcraft : Dans les griffes de l'ombre", author: "Christie Golden", cat: "Fantasy" },
-  { title: "The Witcher - Le Dernier Vœu", author: "Andrzej Sapkowski", cat: "Fantasy" },
-  { title: "The Witcher - L'Épée de la Providence", author: "Andrzej Sapkowski", cat: "Fantasy" },
-  { title: "Discworld", author: "Terry Pratchett", cat: "Fantasy" },
-  { title: "American Gods", author: "Neil Gaiman", cat: "Fantasy" },
-  { title: "Good Omens", author: "Terry Pratchett & Neil Gaiman", cat: "Fantasy" },
-
-  // Romans adulte
-  { title: "La Vérité sur l'affaire Harry Quebert", author: "Joël Dicker", cat: "Roman" },
-  { title: "L'Énigme de la chambre 622", author: "Joël Dicker", cat: "Roman" },
-  { title: "Da Vinci Code", author: "Dan Brown", cat: "Roman" },
-  { title: "Anges et Démons", author: "Dan Brown", cat: "Roman" },
-  { title: "Inferno", author: "Dan Brown", cat: "Roman" },
-  { title: "Les Misérables", author: "Victor Hugo", cat: "Roman" },
-  { title: "Notre-Dame de Paris", author: "Victor Hugo", cat: "Roman" },
-  { title: "Le Comte de Monte-Cristo", author: "Alexandre Dumas", cat: "Roman" },
-  { title: "Les Trois Mousquetaires", author: "Alexandre Dumas", cat: "Roman" },
-  { title: "Germinal", author: "Émile Zola", cat: "Roman" },
-  { title: "Madame Bovary", author: "Gustave Flaubert", cat: "Roman" },
-  { title: "Le Rouge et le Noir", author: "Stendhal", cat: "Roman" },
-  { title: "L'Alchimiste", author: "Paulo Coelho", cat: "Roman" },
-  { title: "Cinquante nuances de Grey", author: "E.L. James", cat: "Roman" },
-  { title: "Gone Girl", author: "Gillian Flynn", cat: "Roman" },
-  { title: "The Girl on the Train", author: "Paula Hawkins", cat: "Roman" },
-  { title: "Big Little Lies", author: "Liane Moriarty", cat: "Roman" },
-  { title: "L'Ombre du vent", author: "Carlos Ruiz Zafón", cat: "Roman" },
-  { title: "Millenium - Les hommes qui n'aimaient pas les femmes", author: "Stieg Larsson", cat: "Roman" },
-  { title: "Millenium - La fille qui rêvait d'un bidon d'essence", author: "Stieg Larsson", cat: "Roman" },
-  { title: "Millenium - La reine dans le palais des courants d'air", author: "Stieg Larsson", cat: "Roman" },
-  { title: "Le Petit Nicolas", author: "René Goscinny", cat: "Roman" },
-  { title: "Au bonheur des dames", author: "Émile Zola", cat: "Roman" },
-  { title: "Voyage au bout de la nuit", author: "Louis-Ferdinand Céline", cat: "Roman" },
-  { title: "L'Étranger", author: "Albert Camus", cat: "Roman" },
-  { title: "Bonjour tristesse", author: "Françoise Sagan", cat: "Roman" },
-  { title: "Les Corrections", author: "Jonathan Franzen", cat: "Roman" },
-  { title: "Normal People", author: "Sally Rooney", cat: "Roman" },
-  { title: "Conversations avec des amis", author: "Sally Rooney", cat: "Roman" },
-  { title: "La Délicatesse", author: "David Foenkinos", cat: "Roman" },
-  { title: "Charlotte", author: "David Foenkinos", cat: "Roman" },
-  { title: "L'Élégance du hérisson", author: "Muriel Barbery", cat: "Roman" },
-  { title: "Marc Levy - Et si c'était vrai", author: "Marc Levy", cat: "Roman" },
-  { title: "Guillaume Musso - La Fille de papier", author: "Guillaume Musso", cat: "Roman" },
-  { title: "Guillaume Musso - Sauve-moi", author: "Guillaume Musso", cat: "Roman" },
-  { title: "L'Amie prodigieuse", author: "Elena Ferrante", cat: "Roman" },
-  { title: "Apprendre à faire du vélo à son père", author: "Raphaëlle Giordano", cat: "Roman" },
-  { title: "Ta deuxième vie commence quand tu comprends que tu n'en as qu'une", author: "Raphaëlle Giordano", cat: "Roman" },
-];
 
 const SCHOOL_HOLIDAYS = [
   { start: "2024-10-19", end: "2024-11-04" },
@@ -212,13 +84,13 @@ function addToCalendar(book) {
   const dNext = (() => { const dt = new Date(book.returnDate); dt.setDate(dt.getDate()+1); return dt.toISOString().split("T")[0].replace(/-/g,""); })();
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   if (isIOS) {
-    const icsContent = ["BEGIN:VCALENDAR","VERSION:2.0","BEGIN:VEVENT",
+    const ics = ["BEGIN:VCALENDAR","VERSION:2.0","BEGIN:VEVENT",
       "DTSTART;VALUE=DATE:"+d,"DTEND;VALUE=DATE:"+dNext,
       "SUMMARY:📚 Rendre : "+book.title+" ("+book.member+")",
       "DESCRIPTION:Emprunté le "+formatDate(book.borrowDate),
       "BEGIN:VALARM","TRIGGER:-PT0S","ACTION:DISPLAY","DESCRIPTION:Rappel médiathèque","END:VALARM",
       "END:VEVENT","END:VCALENDAR"].join("\r\n");
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "rappel.ics"; a.click();
     URL.revokeObjectURL(url);
@@ -229,9 +101,31 @@ function addToCalendar(book) {
   }
 }
 
-// Composant autocomplete
+// Recherche Google Books en français
+let searchTimeout = null;
+async function searchBooks(query) {
+  if (query.length < 2) return [];
+  const q = encodeURIComponent(query);
+  // langRestrict=fr pour livres en français, country=FR pour éditions françaises
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&langRestrict=fr&maxResults=8&printType=books&fields=items(volumeInfo/title,volumeInfo/authors,volumeInfo/imageLinks,volumeInfo/categories)`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.items) return [];
+    return data.items.map(item => ({
+      title: item.volumeInfo.title || "",
+      author: (item.volumeInfo.authors || []).join(", "),
+      cover: item.volumeInfo.imageLinks?.smallThumbnail || null,
+      category: (item.volumeInfo.categories || [])[0] || "",
+    })).filter(b => b.title);
+  } catch (e) {
+    return [];
+  }
+}
+
 function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
   const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [showList, setShowList] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const wrapperRef = useRef(null);
@@ -245,16 +139,19 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
   const handleChange = (e) => {
     const val = e.target.value;
     onChange(val);
+    clearTimeout(searchTimeout);
     if (val.length >= 2) {
-      const q = val.toLowerCase();
-      const filtered = BOOKS_DB.filter(b =>
-        b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
-      ).slice(0, 8);
-      setSuggestions(filtered);
-      setShowList(filtered.length > 0);
+      setLoading(true);
+      searchTimeout = setTimeout(async () => {
+        const results = await searchBooks(val);
+        setSuggestions(results);
+        setShowList(results.length > 0);
+        setLoading(false);
+      }, 350);
     } else {
       setSuggestions([]);
       setShowList(false);
+      setLoading(false);
     }
     setActiveIdx(-1);
   };
@@ -273,30 +170,38 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
     else if (e.key === "Escape") setShowList(false);
   };
 
-  const catColors = { BD:"#e8f5e9", Manga:"#fff3e0", Jeunesse:"#e3f2fd", Ados:"#f3e8ff", Fantasy:"#fce4ec", SF:"#e0f7fa", Roman:"#f5f5f5" };
-  const catTextColors = { BD:"#2e7d32", Manga:"#e65100", Jeunesse:"#1565c0", Ados:"#7b5ea7", Fantasy:"#c62828", SF:"#00695c", Roman:"#555" };
-
   return (
     <div className="autocomplete-wrapper" ref={wrapperRef}>
-      <input
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onFocus={() => value.length >= 2 && suggestions.length > 0 && setShowList(true)}
-        placeholder={placeholder}
-        style={inputStyle}
-        autoComplete="off"
-      />
-      {showList && (
+      <div style={{position:"relative"}}>
+        <input
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => suggestions.length > 0 && setShowList(true)}
+          placeholder={placeholder}
+          style={inputStyle}
+          autoComplete="off"
+        />
+        {loading && (
+          <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)"}}>
+            <div className="spinner"/>
+          </div>
+        )}
+      </div>
+      {showList && suggestions.length > 0 && (
         <div className="autocomplete-list">
           {suggestions.map((book, i) => (
             <div key={i} className={`autocomplete-item${i === activeIdx ? " active" : ""}`}
               onMouseDown={() => handleSelect(book)}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{flex:1,fontWeight:600}}>{book.title}</span>
-                <span style={{fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:10,background:catColors[book.cat]||"#f5f5f5",color:catTextColors[book.cat]||"#555",flexShrink:0}}>{book.cat}</span>
+              {book.cover
+                ? <img src={book.cover} alt="" style={{width:32,height:45,objectFit:"cover",borderRadius:4,flexShrink:0}}/>
+                : <div style={{width:32,height:45,background:"#f0f0f0",borderRadius:4,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>📖</div>
+              }
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#1a1a2e",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.title}</div>
+                <div style={{fontSize:12,color:"#888",marginTop:2}}>{book.author}</div>
+                {book.category && <div style={{fontSize:11,color:"#4a6fa5",marginTop:1}}>{book.category}</div>}
               </div>
-              <div className="author">{book.author}</div>
             </div>
           ))}
         </div>
