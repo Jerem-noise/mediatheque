@@ -101,26 +101,94 @@ function addToCalendar(book) {
   }
 }
 
-// Recherche Open Library — pas de problème CORS, supporte le français
+// Fonction utilitaire pour parser le XML MarcXchange de la BnF
+function parseBnfXml(xmlText) {
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+  const records = xmlDoc.getElementsByTagName("srw:record");
+  const results = [];
+
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    
+    // Extraction via des sélecteurs sur les balises de données MarcXchange
+    const getBnfField = (tag, code) => {
+      const datafield = record.querySelector(`datafield[tag="${tag}"]`);
+      if (!datafield) return "";
+      if (code) {
+        const subfield = datafield.querySelector(`subfield[code="${code}"]`);
+        return subfield ? subfield.textContent.trim() : "";
+      }
+      return datafield.textContent.trim();
+    };
+
+    // 200$a = Titre principal
+    let title = getBnfField("200", "a");
+    // 200$e = Complément de titre (optionnel)
+    const subtitle = getBnfField("200", "e");
+    if (subtitle) title += ` : ${subtitle}`;
+
+    // 200$f = Premier auteur
+    let author = getBnfField("200", "f");
+    // Alternativement dans le champ 700 (Auteur principal)
+    if (!author) author = getBnfField("700", "a") + " " + getBnfField("700", "b");
+
+    // 210$d = Année de publication
+    const year = getBnfField("210", "d").replace(/[^0-9]/g, "").slice(0, 4);
+
+    // 010$a = ISBN
+    const isbn = getBnfField("010", "a").replace(/[^0-9X]/gi, "");
+
+    if (title) {
+      results.push({
+        title: title,
+        author: author || "Auteur inconnu",
+        cover: isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` : null, // La BnF ne fournit pas d'images de couvertures facilement, on passe par l'API OpenLibrary pour la cover
+        isbn: isbn,
+        year: year,
+        source: "BnF"
+      });
+    }
+  }
+  return results;
+}
+
+// Recherche combinée : BnF (via Proxy CORS) avec repli sur Open Library
 let searchTimeout = null;
 async function searchBooks(query) {
   if (query.length < 2) return [];
+  const q = encodeURIComponent(query);
+  
+  // Utilisation d'un proxy CORS pour l'API BnF (indispensable côté client)
+  const proxyUrl = "https://cors-anywhere.herokuapp.com/";
+  const bnfUrl = `${proxyUrl}https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20all%20%22${q}%22%20and%20bib.recordtype%20all%20%22a%22&maximumRecords=8&recordSchema=marcxchange`;
+
   try {
-    const q = encodeURIComponent(query);
-    // lang=fre pour livres en français
-    const url = `https://openlibrary.org/search.json?q=${q}&lang=fre&limit=8&fields=title,author_name,cover_i,first_publish_year,subject`;
-    const res = await fetch(url);
+    const res = await fetch(bnfUrl, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+    if (res.ok) {
+      const xmlText = await res.text();
+      const bnfResults = parseBnfXml(xmlText);
+      if (bnfResults.length > 0) return bnfResults;
+    }
+  } catch(e) {
+    console.warn("Échec de la recherche BnF (Vérifiez le proxy CORS), bascule sur OpenLibrary...", e);
+  }
+
+  // Repli (Fallback) sur OpenLibrary si la BnF ne renvoie rien ou échoue
+  try {
+    const olUrl = `https://openlibrary.org/search.json?q=${q}&lang=fre&limit=8&fields=title,author_name,cover_i,isbn,first_publish_year`;
+    const res = await fetch(olUrl);
     const data = await res.json();
-    if (!data.docs) return [];
-    return data.docs
-      .filter(d => d.title)
-      .map(d => ({
-        title: d.title,
-        author: (d.author_name || []).slice(0,2).join(", "),
-        cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-S.jpg` : null,
-        year: d.first_publish_year || "",
-      }));
-  } catch (e) {
+
+    return (data.docs || []).map(d => ({
+      title: d.title || "",
+      author: (d.author_name || []).slice(0,2).join(", "),
+      cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+      isbn: d.isbn?.[0] || "",
+      year: d.first_publish_year || "",
+      source: "OpenLibrary"
+    }));
+  } catch(e) {
     return [];
   }
 }
@@ -151,7 +219,7 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
         setSuggestions(results);
         setShowList(results.length > 0);
         setLoading(false);
-      }, 400);
+      }, 500);
     } else {
       setSuggestions([]);
       setShowList(false);
@@ -205,7 +273,7 @@ function AutocompleteInput({ value, onChange, onSelectBook, placeholder }) {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#1a1a2e",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.title}</div>
                 {book.author && <div style={{fontSize:12,color:"#888",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.author}</div>}
-                {book.year && <div style={{fontSize:11,color:"#4a6fa5",marginTop:1}}>{book.year}</div>}
+                <div style={{fontSize:11,color:"#4a6fa5",marginTop:1}}>{book.year ? `${book.year} · ` : ""}<span style={{fontStyle:"italic",color:"#999"}}>{book.source}</span></div>
               </div>
             </div>
           ))}
