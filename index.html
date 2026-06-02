@@ -1,1179 +1,159 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ma Médiathèque</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --primary: #4a6fa5;
-      --secondary: #6b8fd4;
-      --jeremy: #4a6fa5;
-      --marion: #b05c8a;
-      --success: #2e7d32;
-      --warning: #e65100;
-      --error: #c0392b;
-      --info: #1565c0;
-      --bg-gradient: linear-gradient(135deg, #f0f4ff 0%, #faf0ff 100%);
-      --header-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      font-family: 'Lato', 'Helvetica Neue', sans-serif;
-      background: var(--bg-gradient);
-      min-height: 100vh;
-      color: #1a1a2e;
-    }
-
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px 16px 60px;
-    }
-
-    /* Header */
-    .header {
-      background: var(--header-gradient);
-      color: #fff;
-      padding: 32px 20px 20px;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .header h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 26px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      margin: 6px 0 0;
-    }
-
-    .header p {
-      color: #aac;
-      font-size: 14px;
-      margin-top: 6px;
-    }
-
-    .header-icon {
-      font-size: 40px;
-      margin-bottom: 6px;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1px;
-      background: #16213e;
-      border-bottom: 3px solid var(--primary);
-      margin-top: 20px;
-    }
-
-    .stat-item {
-      background: #fff;
-      padding: 12px 8px;
-      text-align: center;
-    }
-
-    .stat-value {
-      font-size: 22px;
-      font-weight: 900;
-      color: var(--primary);
-    }
-
-    .stat-label {
-      font-size: 11px;
-      color: #888;
-      font-weight: 600;
-    }
-
-    /* Buttons */
-    .btn {
-      padding: 13px;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(74, 111, 165, 0.3);
-    }
-
-    .btn-secondary {
-      background: #f5f5f5;
-      color: #555;
-      border: 1.5px solid #ddd;
-    }
-
-    .btn-success {
-      background: var(--success);
-      color: #fff;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .btn-full {
-      width: 100%;
-      margin-bottom: 12px;
-    }
-
-    /* Inputs */
-    .input-field {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1.5px solid #ddd;
-      border-radius: 10px;
-      font-size: 16px;
-      outline: none;
-      box-sizing: border-box;
-      font-family: inherit;
-      background: #fafafa;
-      margin-bottom: 12px;
-    }
-
-    .input-field:focus {
-      border-color: var(--primary);
-    }
-
-    /* Autocomplete */
-    .autocomplete-wrapper {
-      position: relative;
-    }
-
-    .autocomplete-list {
-      position: absolute;
-      z-index: 1000;
-      background: #fff;
-      border: 1.5px solid #c5d8f5;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(74, 111, 165, 0.15);
-      max-height: 280px;
-      overflow-y: auto;
-      width: 100%;
-      left: 0;
-      top: 100%;
-    }
-
-    .autocomplete-item {
-      padding: 10px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .autocomplete-item:last-child {
-      border-bottom: none;
-    }
-
-    .autocomplete-item:hover, .autocomplete-item.active {
-      background: #f0f4ff;
-    }
-
-    .book-cover {
-      width: 30px;
-      height: 42px;
-      object-fit: cover;
-      border-radius: 3px;
-      flex-shrink: 0;
-    }
-
-    .book-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .book-title {
-      font-weight: 700;
-      font-size: 14px;
-      color: #1a1a2e;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .book-author {
-      font-size: 12px;
-      color: #888;
-      margin-top: 1px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .book-meta {
-      font-size: 11px;
-      color: var(--primary);
-      margin-top: 1px;
-    }
-
-    .book-meta.manual {
-      color: #999;
-      font-style: italic;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid #ddd;
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Book Card */
-    .book-card {
-      background: #fff;
-      border: 1.5px solid #eee;
-      border-radius: 16px;
-      padding: 16px 18px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .book-card.returned {
-      opacity: 0.7;
-    }
-
-    .book-card-left {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .book-card-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      font-size: 17px;
-      color: #1a1a2e;
-      margin-bottom: 2px;
-      word-break: break-word;
-    }
-
-    .book-card-author {
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 8px;
-    }
-
-    .book-card-tags {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .badge {
-      border-radius: 20px;
-      padding: 2px 10px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .badge.jeremy {
-      background: rgba(74, 111, 165, 0.2);
-      color: var(--jeremy);
-    }
-
-    .badge.marion {
-      background: rgba(176, 92, 138, 0.2);
-      color: var(--marion);
-    }
-
-    .badge.returned {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-
-    .badge.late {
-      background: #fde8e8;
-      color: var(--error);
-    }
-
-    .badge.urgent {
-      background: #fff3e0;
-      color: var(--warning);
-    }
-
-    .badge.normal {
-      background: #e3f2fd;
-      color: var(--info);
-    }
-
-    .book-card-dates {
-      font-size: 12px;
-      color: #999;
-      margin-bottom: 8px;
-    }
-
-    .book-card-dates strong {
-      color: #555;
-    }
-
-    .book-card-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .icon-btn {
-      width: 38px;
-      height: 38px;
-      border-radius: 8px;
-      border: none;
-      background: rgba(74, 111, 165, 0.1);
-      color: var(--primary);
-      cursor: pointer;
-      font-size: 17px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .icon-btn.delete {
-      background: rgba(192, 57, 43, 0.1);
-      color: var(--error);
-    }
-
-    /* Add/Edit Form */
-    .form-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: none; /* Corrigé de flex à none par défaut */
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .form-content {
-      background: #fff;
-      padding: 24px;
-      border-radius: 16px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 8px 32px rgba(74, 111, 165, 0.18);
-    }
-
-    .form-title {
-      margin: 0 0 16px;
-      font-family: 'Playfair Display', serif;
-      color: #1a1a2e;
-      font-size: 18px;
-    }
-
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      color: #666;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .form-row .form-group {
-      flex: 1;
-    }
-
-    .form-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    /* Filters */
-    .filters {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .filter-btn {
-      padding: 8px 16px;
-      border-radius: 20px;
-      border: 1.5px solid #ddd;
-      background: #fff;
-      color: #555;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .filter-btn.active {
-      border-color: var(--primary);
-      background: var(--primary);
-      color: #fff;
-    }
-
-    /* Toast Notifications */
-    .toast-container {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 2000;
-    }
-
-    .toast {
-      background: #1a1a2e;
-      color: #fff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      animation: slideIn 0.3s ease-out;
-      margin-bottom: 10px;
-    }
-
-    .toast.success {
-      background: var(--success);
-    }
-
-    .toast.error {
-      background: var(--error);
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(-50%) translateY(20px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(-50%) translateY(0);
-        opacity: 1;
-      }
-    }
-
-    /* Import Modal */
-    .import-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: none; /* Corrigé de flex à none par défaut */
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .import-content {
-      background: #fff;
-      padding: 24px;
-      border-radius: 16px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 8px 32px rgba(74, 111, 165, 0.18);
-    }
-
-    .import-textarea {
-      width: 100%;
-      min-height: 150px;
-      padding: 11px 14px;
-      border: 1.5px solid #ddd;
-      border-radius: 10px;
-      font-size: 16px;
-      font-family: inherit;
-      background: #fafafa;
-      margin-bottom: 12px;
-      resize: vertical;
-    }
-
-    /* Empty State */
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #bbb;
-      font-size: 15px;
-    }
-
-    .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
-    }
-
-    /* Responsive */
-    @media (max-width: 600px) {
-      .book-card {
-        flex-direction: column;
-      }
-
-      .book-card-actions {
-        flex-direction: row;
-        margin-top: 12px;
-      }
-
-      .form-row {
-        flex-direction: column;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="header-icon">📚</div>
-    <h1>Ma Médiathèque</h1>
-    <p>Jérémy & Marion</p>
-    <div class="stats">
-      <div class="stat-item">
-        <div class="stat-value" id="stat-active">0</div>
-        <div class="stat-label">En cours</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="stat-urgent">0</div>
-        <div class="stat-label">Urgents</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="stat-jeremy">0</div>
-        <div class="stat-label">Jérémy</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="stat-marion">0</div>
-        <div class="stat-label">Marion</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="container">
-    <div class="btn-group">
-      <button class="btn btn-primary btn-full" id="add-book-btn">+ Ajouter un livre</button>
-      <button class="btn btn-secondary" id="export-btn">📥 Exporter</button>
-      <button class="btn btn-secondary" id="import-btn">📤 Importer</button>
-    </div>
-
-    <input type="text" class="input-field" id="search-input" placeholder="🔍 Rechercher un titre ou auteur..." />
-
-    <div class="filters">
-      <button class="filter-btn active" data-filter="all">Tous</button>
-      <button class="filter-btn" data-filter="active">En cours</button>
-      <button class="filter-btn" data-filter="jeremy">Jérémy</button>
-      <button class="filter-btn" data-filter="marion">Marion</button>
-      <button class="filter-btn" data-filter="returned">Rendus</button>
-    </div>
-
-    <div id="books-list">
-      </div>
-  </div>
-
-  <div class="form-modal" id="book-form-modal">
-    <div class="form-content">
-      <h2 class="form-title" id="form-title">Ajouter un livre</h2>
-      <form id="book-form">
-        <div class="form-group">
-          <label for="book-title">Titre *</label>
-          <div class="autocomplete-wrapper">
-            <input type="text" class="input-field" id="book-title" placeholder="Tapez pour chercher..." autocomplete="off" />
-            <div class="spinner" id="search-spinner" style="display: none;"></div>
-            <div class="autocomplete-list" id="autocomplete-list"></div>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="book-author">Auteur</label>
-          <input type="text" class="input-field" id="book-author" placeholder="Auteur" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="book-member">Membre</label>
-            <select class="input-field" id="book-member">
-              <option value="Jérémy">Jérémy</option>
-              <option value="Marion">Marion</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="book-borrow-date">Date d'emprunt</label>
-            <input type="date" class="input-field" id="book-borrow-date" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Date de retour : <strong id="return-date-display"></strong></label>
-          <div id="holiday-info" style="font-size: 12px; color: #7b5ea7; margin-top: 4px; font-weight: 600;"></div>
-        </div>
-        <div class="form-group">
-          <label>Note</label>
-          <div id="stars-container" style="display: flex; gap: 2px; margin-top: 4px;">
-            </div>
-          <input type="hidden" id="book-rating" value="0" />
-        </div>
-        <div class="form-group">
-          <label for="book-comment">Commentaire (optionnel)</label>
-          <textarea class="input-field" id="book-comment" rows="2" placeholder="Commentaire..."></textarea>
-        </div>
-        <div class="form-group">
-          <label>
-            <input type="checkbox" id="book-returned" />
-            Livre rendu
-          </label>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary" id="save-btn">💾 Sauvegarder</button>
-          <button type="button" class="btn btn-secondary" id="cancel-btn">Annuler</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="import-modal" id="import-modal">
-    <div class="import-content">
-      <h2 class="form-title">Importer des livres</h2>
-      <textarea class="import-textarea" id="import-textarea" placeholder='Coller ici le JSON exporté (ex: [{"title": "Livre 1", "author": "Auteur", ...}])'></textarea>
-      <div class="form-actions">
-        <button class="btn btn-primary" id="import-confirm-btn">Importer</button>
-        <button class="btn btn-secondary" id="import-cancel-btn">Annuler</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast-container" id="toast-container"></div>
-
-  <script>
-    // ==================== CONSTANTES ====================
-    const MEMBERS = ["Jérémy", "Marion"];
-    const RATINGS = [1, 2, 3, 4, 5];
-    const STORAGE_KEY = "mediatheque_books_v10";
-
-    const SCHOOL_HOLIDAYS = [
-      { start: "2024-10-19", end: "2024-11-04" },
-      { start: "2024-12-21", end: "2025-01-06" },
-      { start: "2025-02-22", end: "2025-03-10" },
-      { start: "2025-04-19", end: "2025-05-05" },
-      { start: "2025-07-05", end: "2025-09-01" },
-      { start: "2025-10-18", end: "2025-11-03" },
-      { start: "2025-12-20", end: "2026-01-05" },
-      { start: "2026-02-14", end: "2026-03-02" },
-      { start: "2026-04-18", end: "2026-05-04" },
-      { start: "2026-07-04", end: "2026-09-01" },
-    ];
-
-    // ==================== ÉTAT DE L'APPLICATION ====================
-    let books = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    let currentFilter = "all";
-    let currentSearch = "";
-    let currentBookId = null; 
-    let currentRating = 0;
-
-    // ==================== UTILITAIRES ====================
-    const formatDate = (dateStr) => {
-      if (!dateStr) return "";
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      });
-    };
-
-    const isSchoolHoliday = (dateStr) => {
-      if (!dateStr) return false;
-      const d = new Date(dateStr);
-      return SCHOOL_HOLIDAYS.some(({ start, end }) => {
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        return d >= startDate && d <= endDate;
-      });
-    };
-
-    const computeReturnDate = (dateStr) => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr);
-      if (isSchoolHoliday(dateStr)) {
-        d.setDate(d.getDate() + 45);
-      } else {
-        d.setMonth(d.getMonth() + 1);
-      }
-      return d.toISOString().split("T")[0];
-    };
-
-    const daysLeft = (returnDate) => {
-      if (!returnDate) return 0;
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const ret = new Date(returnDate); ret.setHours(0, 0, 0, 0);
-      return Math.ceil((ret - today) / 86400000);
-    };
-
-    // ==================== STOCKAGE ====================
-    const saveBooks = () => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-    };
-
-    const updateStats = () => {
-      const active = books.filter(b => !b.returned);
-      const urgent = active.filter(b => daysLeft(b.returnDate) <= 5);
-      const jeremy = active.filter(b => b.member === MEMBERS[0]);
-      const marion = active.filter(b => b.member === MEMBERS[1]);
-
-      document.getElementById("stat-active").textContent = active.length;
-      document.getElementById("stat-urgent").textContent = urgent.length;
-      document.getElementById("stat-jeremy").textContent = jeremy.length;
-      document.getElementById("stat-marion").textContent = marion.length;
-    };
-
-    // ==================== PROXY API VIA CLOUDFLARE WORKER (BNF & OL) ====================
-    const WORKER_URL = "https://proxy-bnf.batteux-jerem.workers.dev/"; // 👈 METTEZ VOTRE URL DE WORKER ICI
-
-    const searchBooks = async (query) => {
-      if (query.length < 2) return [];
-      try {
-        // On interroge UNIQUEMENT votre worker Cloudflare qui sert de bouclier
-        const response = await fetch(`${WORKER_URL}?q=${encodeURIComponent(query)}`);
-        
-        if (!response.ok) {
-          throw new Error(`Le Worker a répondu avec un statut : ${response.status}`);
-        }
-
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
-
-      } catch (error) {
-        // En cas de coupure réseau ou problème de Worker, on log l'erreur proprement 
-        // sans faire cracher l'interface utilisateur.
-        console.warn("Mode dégradé (Proxy indisponible) :", error.message);
-        return []; 
-      }
-    };
-    // ==================== TOAST NOTIFICATIONS ====================
-    const showToast = (message, type = "info") => {
-      const container = document.getElementById("toast-container");
-      const toast = document.createElement("div");
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    };
-
-    // ==================== RENDU DES LIVRES ====================
-    const renderBooks = () => {
-      const booksList = document.getElementById("books-list");
-      const filteredBooks = books.filter(book => {
-        const matchesSearch = book.title.toLowerCase().includes(currentSearch.toLowerCase()) ||
-                             book.author.toLowerCase().includes(currentSearch.toLowerCase());
-        if (!matchesSearch) return false;
-
-        if (currentFilter === "jeremy") return book.member === MEMBERS[0];
-        if (currentFilter === "marion") return book.member === MEMBERS[1];
-        if (currentFilter === "active") return !book.returned;
-        if (currentFilter === "returned") return book.returned;
-        return true;
-      });
-
-      if (filteredBooks.length === 0) {
-        booksList.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            Aucun livre trouvé.
-          </div>
-        `;
-        return;
-      }
-
-      booksList.innerHTML = filteredBooks.map(book => {
-        const memberColor = book.member === MEMBERS[0] ? "jeremy" : "marion";
-        const days = daysLeft(book.returnDate);
-        let badgeClass = "normal";
-        let badgeText = `📅 ${days}j restants`;
-
-        if (book.returned) {
-          badgeClass = "returned";
-          badgeText = "✓ Rendu";
-        } else if (days < 0) {
-          badgeClass = "late";
-          badgeText = `⚠ En retard de ${Math.abs(days)}j`;
-        } else if (days <= 5) {
-          badgeClass = "urgent";
-          badgeText = `⏰ ${days}j restants`;
-        }
-
-        return `
-          <div class="book-card ${book.returned ? 'returned' : ''}" data-id="${book.id}">
+const STORAGE_KEY = "mediatheque_books_v10";
+
+let books = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+let currentFilter = "all";
+let currentSearch = "";
+let scrollTop = 0;
+
+const LIST = document.getElementById("books-list");
+
+// -------------------- SAFE HTML --------------------
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// -------------------- SAVE --------------------
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+}
+
+// -------------------- FILTER --------------------
+function getFiltered() {
+  const s = currentSearch.toLowerCase();
+
+  return books.filter(b => {
+    if (s && !(
+      (b.title || "").toLowerCase().includes(s) ||
+      (b.author || "").toLowerCase().includes(s)
+    )) return false;
+
+    if (currentFilter === "jeremy") return b.member === "Jérémy";
+    if (currentFilter === "marion") return b.member === "Marion";
+    if (currentFilter === "active") return !b.returned;
+    if (currentFilter === "returned") return b.returned;
+
+    return true;
+  });
+}
+
+// -------------------- VIRTUAL RENDER (NO LAG) --------------------
+const ITEM_HEIGHT = 120;
+const BUFFER = 6;
+
+function render() {
+  const data = getFiltered();
+
+  const containerHeight = LIST.clientHeight || 600;
+
+  const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER);
+  const end = Math.min(
+    data.length,
+    Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER
+  );
+
+  const visible = data.slice(start, end);
+
+  const offset = start * ITEM_HEIGHT;
+
+  LIST.innerHTML = `
+    <div style="height:${data.length * ITEM_HEIGHT}px; position:relative;">
+      <div style="transform:translateY(${offset}px)">
+        ${visible.map(b => `
+          <div class="book-card" style="height:${ITEM_HEIGHT}px">
             <div class="book-card-left">
-              <div class="book-card-title">${book.title || "Titre inconnu"}</div>
-              <div class="book-card-author">${book.author || "Auteur inconnu"}</div>
-              <div class="book-card-tags">
-                <span class="badge ${memberColor}">${book.member}</span>
-                ${book.holidayLoan && !book.returned ? '<span class="badge" style="background: #f3e8ff; color: #7b5ea7;">🏖 Vacances</span>' : ''}
-                <span class="badge ${badgeClass}">${badgeText}</span>
-              </div>
-              <div class="book-card-dates">
-                Emprunté le ${formatDate(book.borrowDate)} · À rendre le <strong>${formatDate(book.returnDate)}</strong>
-              </div>
-              ${!book.returned ? `
-                <button class="btn btn-secondary" style="margin-top: 8px; padding: 6px 12px; font-size: 12px;" onclick="addToCalendar(${book.id})">
-                  📅 Ajouter à l'agenda
-                </button>
-              ` : ''}
-              ${book.rating > 0 ? `
-                <div style="margin-top: 8px; display: flex; gap: 2px;">
-                  ${[...Array(book.rating)].map(() => '<span style="color:#f4a500;">★</span>').join('')}
-                  ${[...Array(5 - book.rating)].map(() => '<span style="color:#ddd;">★</span>').join('')}
-                </div>
-              ` : ''}
-              ${book.comment ? `
-                <div style="margin-top: 8px; font-size: 13px; color: #555; font-style: italic; background: #f9f9f9; border-radius: 8px; padding: 6px 10px;">
-                  "${book.comment}"
-                </div>
-              ` : ''}
-            </div>
-            <div class="book-card-actions">
-              <button class="icon-btn" onclick="editBook(${book.id})" title="Modifier">
-                ✏️
-              </button>
-              <button class="icon-btn delete" onclick="confirmDelete(${book.id})" title="Supprimer">
-                🗑
-              </button>
+              <div class="book-card-title">${escapeHtml(b.title)}</div>
+              <div class="book-card-author">${escapeHtml(b.author)}</div>
             </div>
           </div>
-        `;
-      }).join('');
-    };
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
 
-    // ==================== GESTION DES LIVRES ====================
-    const addBook = (book) => {
-      books.unshift(book);
-      saveBooks();
-      renderBooks();
-      updateStats();
-      showToast("Livre ajouté !", "success");
-    };
+// -------------------- SCROLL OPTIMIZED --------------------
+LIST.addEventListener("scroll", (e) => {
+  scrollTop = e.target.scrollTop;
+  render();
+});
 
-    const updateBook = (updatedBook) => {
-      const index = books.findIndex(b => b.id === updatedBook.id);
-      if (index !== -1) {
-        books[index] = updatedBook;
-        saveBooks();
-        renderBooks();
-        updateStats();
-        showToast("Livre mis à jour !", "success");
-      }
-    };
+// -------------------- DEBOUNCE --------------------
+let tSearch;
 
-    const deleteBook = (id) => {
-      books = books.filter(b => b.id !== id);
-      saveBooks();
-      renderBooks();
-      updateStats();
-      showToast("Livre supprimé.", "success");
-    };
+document.getElementById("search-input").addEventListener("input", (e) => {
+  clearTimeout(tSearch);
 
-    window.confirmDelete = (id) => {
-      const book = books.find(b => b.id === id);
-      if (confirm(`Supprimer "${book.title}" ?`)) {
-        deleteBook(id);
-      }
-    };
+  tSearch = setTimeout(() => {
+    currentSearch = e.target.value;
+    render();
+  }, 150);
+});
 
-    window.editBook = (id) => {
-      const book = books.find(b => b.id === id);
-      if (book) openForm(book);
-    };
+// -------------------- FILTERS --------------------
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    e.target.classList.add("active");
 
-    // ==================== FORMULAIRE ====================
-    const openForm = (book = null) => {
-      const modal = document.getElementById("book-form-modal");
-      const form = document.getElementById("book-form");
-      const title = document.getElementById("form-title");
+    currentFilter = e.target.dataset.filter;
+    render();
+  });
+});
 
-      if (book) {
-        title.textContent = "Modifier le livre";
-        document.getElementById("book-title").value = book.title;
-        document.getElementById("book-author").value = book.author;
-        document.getElementById("book-member").value = book.member;
-        document.getElementById("book-borrow-date").value = book.borrowDate;
-        document.getElementById("book-comment").value = book.comment || "";
-        document.getElementById("book-returned").checked = book.returned;
-        currentRating = book.rating || 0;
-        currentBookId = book.id;
-        updateReturnDateDisplay(book.borrowDate);
-      } else {
-        title.textContent = "Ajouter un livre";
-        form.reset();
-        currentRating = 0;
-        currentBookId = null;
-        const today = new Date().toISOString().split("T")[0];
-        document.getElementById("book-borrow-date").value = today;
-        updateReturnDateDisplay(today);
-      }
+// -------------------- AUTOCOMPLETE (SAFE + FAST) --------------------
+let tAuto;
 
-      updateStars();
-      modal.style.display = "flex";
-    };
+async function searchBooks(q) {
+  try {
+    const res = await fetch(`https://proxy-bnf.batteux-jerem.workers.dev/?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
 
-    const closeForm = () => {
-      document.getElementById("book-form-modal").style.display = "none";
-      document.getElementById("autocomplete-list").innerHTML = "";
-    };
+document.getElementById("book-title").addEventListener("input", (e) => {
+  const q = e.target.value.trim();
+  const list = document.getElementById("autocomplete-list");
 
-    const updateReturnDateDisplay = (borrowDate) => {
-      const returnDate = computeReturnDate(borrowDate);
-      document.getElementById("return-date-display").textContent = formatDate(returnDate);
+  if (q.length < 2) {
+    list.innerHTML = "";
+    return;
+  }
 
-      const holidayInfo = document.getElementById("holiday-info");
-      if (isSchoolHoliday(borrowDate)) {
-        holidayInfo.textContent = "🏖 Vacances scolaires — délai de 45 jours";
-      } else {
-        holidayInfo.textContent = "📅 Période normale — délai de 1 mois";
-      }
-    };
+  clearTimeout(tAuto);
 
-    const updateStars = () => {
-      const container = document.getElementById("stars-container");
-      container.innerHTML = RATINGS.map(s => `
-        <span class="star" onclick="handleStarClick(${s})" style="font-size: 20px; color: ${s <= currentRating ? '#f4a500' : '#ddd'}; cursor: pointer;">★</span>
-      `).join('');
-    };
+  tAuto = setTimeout(async () => {
+    const results = await searchBooks(q);
 
-    window.handleStarClick = (rating) => {
-      currentRating = rating;
-      document.getElementById("book-rating").value = rating;
-      updateStars();
-    };
+    list.innerHTML = results.slice(0, 8).map(b => `
+      <div class="autocomplete-item" onclick='selectBook(${JSON.stringify(b.title)}, ${JSON.stringify(b.author || "")})'>
+        <div class="book-info">
+          <div class="book-title">${escapeHtml(b.title)}</div>
+          <div class="book-author">${escapeHtml(b.author || "")}</div>
+        </div>
+      </div>
+    `).join("");
+  }, 250);
+});
 
-    const saveBook = (e) => {
-      e.preventDefault();
-      const title = document.getElementById("book-title").value.trim();
-      if (!title) {
-        showToast("Le titre est requis.", "error");
-        return;
-      }
+// -------------------- SELECT AUTOCOMPLETE --------------------
+window.selectBook = (title, author) => {
+  document.getElementById("book-title").value = title;
+  document.getElementById("book-author").value = author;
+  document.getElementById("autocomplete-list").innerHTML = "";
+};
 
-      const borrowDate = document.getElementById("book-borrow-date").value;
-      const returnDate = computeReturnDate(borrowDate);
+// -------------------- INIT --------------------
+function init() {
+  render();
+}
 
-      const book = {
-        id: currentBookId || Date.now(),
-        title,
-        author: document.getElementById("book-author").value.trim(),
-        member: document.getElementById("book-member").value,
-        borrowDate,
-        returnDate,
-        rating: currentRating,
-        comment: document.getElementById("book-comment").value.trim(),
-        returned: document.getElementById("book-returned").checked,
-        holidayLoan: isSchoolHoliday(borrowDate)
-      };
-
-      if (currentBookId) {
-        updateBook(book);
-      } else {
-        addBook(book);
-      }
-      closeForm();
-    };
-
-    // ==================== AUTOCOMPLETE ====================
-    let autocompleteTimeout = null;
-
-    const handleAutocompleteInput = async (e) => {
-      const query = e.target.value.trim();
-      const list = document.getElementById("autocomplete-list");
-
-      if (query.length < 2) {
-        list.innerHTML = "";
-        return;
-      }
-
-      document.getElementById("search-spinner").style.display = "block";
-
-      if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
-
-      autocompleteTimeout = setTimeout(async () => {
-        try {
-          const results = await searchBooks(query);
-          
-          if (results.length === 0) {
-            list.innerHTML = `
-              <div class="autocomplete-item" onclick="selectBook('${escapeHtml(query)}', '')">
-                <div class="book-cover placeholder">📖</div>
-                <div class="book-info">
-                  <div class="book-title">${escapeHtml(query)}</div>
-                  <div class="book-meta manual">Ajouter manuellement</div>
-                </div>
-              </div>
-            `;
-          } else {
-            list.innerHTML = results.map(book => {
-              const safeTitle = escapeHtml(book.title);
-              const safeAuthor = escapeHtml(book.author);
-              return `
-                <div class="autocomplete-item" onclick="selectBook('${safeTitle}', '${safeAuthor}')">
-                  ${book.cover ? `
-                    <img src="${book.cover}" alt="" class="book-cover" onerror="this.style.display='none'" />
-                  ` : `
-                    <div class="book-cover placeholder">📖</div>
-                  `}
-                  <div class="book-info">
-                    <div class="book-title">${book.title}</div>
-                    ${book.author ? `<div class="book-author">${book.author}</div>` : ''}
-                    <div class="book-meta">${book.year ? `${book.year} · ` : ''} <span>${book.source}</span></div>
-                  </div>
-                </div>
-              `;
-            }).join('');
-          }
-        } catch (error) {
-          console.error(error);
-        } finally {
-          document.getElementById("search-spinner").style.display = "none";
-        }
-      }, 500);
-    };
-
-    const escapeHtml = (str) => {
-      return str.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-    };
-
-    window.selectBook = (title, author) => {
-      document.getElementById("book-title").value = title;
-      document.getElementById("book-author").value = author;
-      document.getElementById("autocomplete-list").innerHTML = "";
-    };
-
-    // ==================== CALENDRIER (.ICS) ====================
-    window.addToCalendar = (bookId) => {
-      const book = books.find(b => b.id === bookId);
-      if (!book) return;
-
-      const cleanDate = book.returnDate.replace(/-/g, "");
-      
-      const icsLines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Ma Mediatheque//FR",
-        "BEGIN:VEVENT",
-        `UID:${book.id}@mediatheque`,
-        `DTSTAMP:${cleanDate}T120000Z`,
-        `DTSTART;VALUE=DATE:${cleanDate}`,
-        `SUMMARY:Rendre le livre: ${book.title}`,
-        `DESCRIPTION:Livre emprunté par ${book.member}. À rendre à la médiathèque.`,
-        "END:VEVENT",
-        "END:VCALENDAR"
-      ];
-
-      const icsString = icsLines.join("\r\n");
-      const blob = new Blob([icsString], { type: "text/calendar;charset=utf-8" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `rendre_${book.title.replace(/\s+/g, '_')}.ics`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    // ==================== IMPORT / EXPORT ====================
-    const exportData = () => {
-      if (books.length === 0) {
-        showToast("Aucune donnée à exporter.", "error");
-        return;
-      }
-      const dataStr = JSON.stringify(books, null, 2);
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `mediatheque_export_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      showToast("Données exportées !", "success");
-    };
-
-    const importData = () => {
-      const textarea = document.getElementById("import-textarea");
-      try {
-        const imported = JSON.parse(textarea.value.trim());
-        if (Array.isArray(imported)) {
-          books = imported;
-          saveBooks();
-          renderBooks();
-          updateStats();
-          document.getElementById("import-modal").style.display = "none";
-          textarea.value = "";
-          showToast("Importation réussie !", "success");
-        } else {
-          showToast("Le format JSON doit être un tableau.", "error");
-        }
-      } catch (e) {
-        showToast("JSON invalide. Vérifiez votre saisie.", "error");
-      }
-    };
-
-    // ==================== INITIALISATION ET EVENTS ====================
-    document.addEventListener("DOMContentLoaded", () => {
-      renderBooks();
-      updateStats();
-
-      // Listeners Principaux
-      document.getElementById("add-book-btn").addEventListener("click", () => openForm());
-      document.getElementById("cancel-btn").addEventListener("click", closeForm);
-      document.getElementById("book-form").addEventListener("submit", saveBook);
-      document.getElementById("book-borrow-date").addEventListener("change", (e) => updateReturnDateDisplay(e.target.value));
-      document.getElementById("book-title").addEventListener("input", handleAutocompleteInput);
-
-      // Recherche et Filtres
-      document.getElementById("search-input").addEventListener("input", (e) => {
-        currentSearch = e.target.value;
-        renderBooks();
-      });
-
-      document.querySelectorAll(".filter-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-          e.target.classList.add("active");
-          currentFilter = e.target.getAttribute("data-filter");
-          renderBooks();
-        });
-      });
-
-      // Import / Export Modals
-      document.getElementById("export-btn").addEventListener("click", exportData);
-      document.getElementById("import-btn").addEventListener("click", () => {
-        document.getElementById("import-modal").style.display = "flex";
-      });
-      document.getElementById("import-cancel-btn").addEventListener("click", () => {
-        document.getElementById("import-modal").style.display = "none";
-      });
-      document.getElementById("import-confirm-btn").addEventListener("click", importData);
-    });
-  </script>
-</body>
-</html>
+init();
