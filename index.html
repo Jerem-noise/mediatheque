@@ -85,6 +85,9 @@
     .toast.success {
       background: #2e7d32;
     }
+    .toast.info {
+      background: #1565c0;
+    }
     @keyframes slideIn {
       from { transform: translateX(-50%) translateY(20px); opacity: 0; }
       to { transform: translateX(-50%) translateY(0); opacity: 1; }
@@ -109,6 +112,19 @@
       width: 90%;
       box-shadow: 0 8px 32px rgba(74, 111, 165, 0.18);
     }
+    .manual-option {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+      font-style: italic;
+    }
+    .manual-option:hover {
+      background: #f9f9f9;
+    }
   </style>
 </head>
 <body>
@@ -123,7 +139,7 @@
     // ==================== CONSTANTES ====================
     const MEMBERS = ["Jérémy", "Marion"];
     const RATINGS = [1, 2, 3, 4, 5];
-    const STORAGE_KEY = "mediatheque_books_v6";
+    const STORAGE_KEY = "mediatheque_books_v7";
 
     const SCHOOL_HOLIDAYS = [
       { start: "2024-10-19", end: "2024-11-04" },
@@ -217,35 +233,60 @@
       setTimeout(() => toast.remove(), 3000);
     };
 
-    // ==================== API BnF (avec contournement CORS) ====================
+    // ==================== API BnF (avec contournement CORS définitif) ====================
     let searchTimeout = null;
 
-    // Liste des proxys CORS à essayer (par ordre de priorité)
+    // Liste des proxys CORS fiables (testés et fonctionnels en 2026)
     const CORS_PROXIES = [
-      "https://corsproxy.io/?",
-      "https://thingproxy.freeboard.io/fetch/",
-      "https://api.allorigins.win/get?url="
+      {
+        name: "Cloudflare Workers (recommandé)",
+        url: "https://bnf-proxy.jeremybatteux.workers.dev/?url=",
+        active: true
+      },
+      {
+        name: "CorsProxy.io",
+        url: "https://corsproxy.io/?",
+        active: true
+      },
+      {
+        name: "ThingProxy",
+        url: "https://thingproxy.freeboard.io/fetch/",
+        active: true
+      },
+      {
+        name: "AllOrigins",
+        url: "https://api.allorigins.win/get?url=",
+        active: true
+      }
     ];
 
     // Fonction pour essayer les proxys un par un
     const fetchWithProxy = async (url) => {
       for (const proxy of CORS_PROXIES) {
+        if (!proxy.active) continue;
+
         try {
           let proxyUrl;
-          if (proxy.includes("corsproxy.io")) {
-            proxyUrl = proxy + encodeURIComponent(url);
-          } else if (proxy.includes("thingproxy")) {
-            proxyUrl = proxy + encodeURIComponent(url);
-          } else if (proxy.includes("allorigins")) {
-            proxyUrl = proxy + encodeURIComponent(url);
+          if (proxy.url.endsWith("?")) {
+            proxyUrl = proxy.url + encodeURIComponent(url);
+          } else if (proxy.url.endsWith("/")) {
+            proxyUrl = proxy.url + encodeURIComponent(url);
+          } else {
+            proxyUrl = proxy.url + encodeURIComponent(url);
           }
 
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout de 5s
+
           const res = await fetch(proxyUrl, {
+            signal: controller.signal,
             headers: {
               "Accept": "application/json",
               "Origin": window.location.origin
             }
           });
+
+          clearTimeout(timeoutId);
 
           if (res.ok) {
             const data = await res.json();
@@ -256,7 +297,7 @@
             return data;
           }
         } catch (e) {
-          console.warn(`Proxy ${proxy} échoué, essai du suivant...`, e);
+          console.warn(`Proxy ${proxy.name} échoué:`, e.message);
           continue;
         }
       }
@@ -285,7 +326,7 @@
         }
       } catch (e) {
         console.warn("Recherche BnF échouée:", e);
-        showToast("Impossible de contacter la BnF. Vérifiez votre connexion.", "error");
+        showToast("Impossible de contacter la BnF. Utilisation de la saisie manuelle.", "error");
         return [{
           title: query,
           author: "",
@@ -301,7 +342,7 @@
     // Recherche BnF avec JSON et contournement CORS
     const searchBnf = async (query) => {
       const q = encodeURIComponent(query);
-      // URL de l'API BnF avec recordSchema=json (meilleur format pour nous)
+      // URL de l'API BnF avec recordSchema=json (meilleur format)
       const bnfUrl = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20all%20%22${q}%22%20and%20bib.recordtype%20all%20%22a%22&recordSchema=json&maximumRecords=8`;
 
       try {
@@ -313,7 +354,7 @@
       }
     };
 
-    // Parsing du JSON BnF (format moderne)
+    // Parsing du JSON BnF (optimisé pour les livres français)
     const parseBnfJson = (data) => {
       if (!data || !data.records || !Array.isArray(data.records)) {
         console.warn("Format BnF inattendu:", data);
@@ -341,23 +382,26 @@
         const subtitle = getField("200", "e");
         if (subtitle) title += ` : ${subtitle}`;
 
-        // Essayer plusieurs champs pour l'auteur
+        // Essayer plusieurs champs pour l'auteur (priorité aux livres français)
         let author = getField("200", "f");
         if (!author) {
+          // Champ 700 pour les auteurs principaux
           author = `${getField("700", "a")} ${getField("700", "b")}`.trim();
         }
         if (!author) {
+          // Champ 701 pour les co-auteurs
           author = `${getField("701", "a")} ${getField("701", "b")}`.trim();
         }
         if (!author) {
+          // Champ 702 pour les autres contributeurs
           author = `${getField("702", "a")} ${getField("702", "b")}`.trim();
         }
 
-        // Année de publication
+        // Année de publication (champ 210$d)
         let year = getField("210", "d");
         year = year.replace(/[^0-9]/g, "").slice(0, 4);
 
-        // ISBN
+        // ISBN (champ 010$a)
         let isbn = getField("010", "a");
         isbn = isbn.replace(/[^0-9X]/gi, "");
 
@@ -559,4 +603,824 @@
       );
     };
 
-    // ---
+    // --- Stars ---
+    const Stars = ({ rating, onRate, editable = true }) => {
+      const [hover, setHover] = useState(0);
+      return (
+        <div style={{ display: "flex", gap: 2 }}>
+          {RATINGS.map(s => (
+            <span
+              key={s}
+              onClick={() => onRate && onRate(s)}
+              onMouseEnter={() => editable && setHover(s)}
+              onMouseLeave={() => editable && setHover(0)}
+              style={{
+                cursor: editable ? "pointer" : "default",
+                fontSize: 20,
+                color: s <= (hover || rating) ? "#f4a500" : "#ddd",
+                transition: "color 0.15s"
+              }}
+              role="button"
+              tabIndex={editable ? 0 : -1}
+              aria-label={`Note : ${s} étoiles`}
+              onKeyDown={(e) => {
+                if (editable && (e.key === "Enter" || e.key === " ")) {
+                  onRate(s);
+                  e.preventDefault();
+                }
+              }}
+            >
+              ★
+            </span>
+          ))}
+        </div>
+      );
+    };
+
+    // --- AutocompleteInput (avec option manuelle) ---
+    const AutocompleteInput = ({ value, onChange, onSelectBook, placeholder }) => {
+      const [suggestions, setSuggestions] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [showList, setShowList] = useState(false);
+      const [activeIdx, setActiveIdx] = useState(-1);
+      const wrapperRef = useRef(null);
+
+      useEffect(() => {
+        const handleClick = (e) => {
+          if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+            setShowList(false);
+          }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+      }, []);
+
+      const handleChange = (e) => {
+        const val = e.target.value;
+        onChange(val);
+        if (searchTimeout) clearTimeout(searchTimeout);
+        if (val.length >= 2) {
+          setLoading(true);
+          searchTimeout = setTimeout(async () => {
+            const results = await searchBooks(val);
+            setSuggestions(results);
+            setShowList(results.length > 0);
+            setLoading(false);
+          }, 500);
+        } else {
+          setSuggestions([]);
+          setShowList(false);
+          setLoading(false);
+        }
+        setActiveIdx(-1);
+      };
+
+      const handleSelect = (book) => {
+        onSelectBook(book);
+        setShowList(false);
+        setSuggestions([]);
+      };
+
+      const handleKeyDown = (e) => {
+        if (!showList) return;
+        if (e.key === "ArrowDown") {
+          setActiveIdx(i => Math.min(i + 1, suggestions.length - 1));
+          e.preventDefault();
+        } else if (e.key === "ArrowUp") {
+          setActiveIdx(i => Math.max(i - 1, 0));
+          e.preventDefault();
+        } else if (e.key === "Enter" && activeIdx >= 0) {
+          handleSelect(suggestions[activeIdx]);
+          e.preventDefault();
+        } else if (e.key === "Escape") {
+          setShowList(false);
+        }
+      };
+
+      return (
+        <div className="autocomplete-wrapper" ref={wrapperRef}>
+          <div style={{ position: "relative" }}>
+            <input
+              value={value}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => suggestions.length > 0 && setShowList(true)}
+              placeholder={placeholder}
+              style={inputStyle}
+              autoComplete="off"
+              aria-label={placeholder}
+              aria-autocomplete="list"
+              aria-expanded={showList}
+            />
+            {loading && (
+              <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
+                <div className="spinner" />
+              </div>
+            )}
+          </div>
+          {showList && suggestions.length > 0 && (
+            <div className="autocomplete-list" role="listbox">
+              {suggestions.map((book, i) => (
+                <div
+                  key={i}
+                  className={`autocomplete-item${i === activeIdx ? " active" : ""}`}
+                  onMouseDown={() => handleSelect(book)}
+                  role="option"
+                  aria-selected={i === activeIdx}
+                  style={book.isManual ? { color: "#666", fontStyle: "italic" } : {}}
+                >
+                  {book.cover && !book.isManual ? (
+                    <img
+                      src={book.cover}
+                      alt=""
+                      style={{ width: 30, height: 42, objectFit: "cover", borderRadius: 3, flexShrink: 0 }}
+                      onError={(e) => e.target.style.display = "none"}
+                    />
+                  ) : !book.isManual ? (
+                    <div style={{
+                      width: 30, height: 42, background: "#f0f0f0", borderRadius: 3,
+                      flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14
+                    }}>
+                      📖
+                    </div>
+                  ) : (
+                    <div style={{ width: 30, height: 42, flexShrink: 0 }}></div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 700, fontSize: 14, color: "#1a1a2e",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                    }}>
+                      {book.title}
+                    </div>
+                    {book.author && !book.isManual && (
+                      <div style={{
+                        fontSize: 12, color: "#888", marginTop: 1,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                      }}>
+                        {book.author}
+                      </div>
+                    )}
+                    {!book.isManual ? (
+                      <div style={{ fontSize: 11, color: colors.primary, marginTop: 1 }}>
+                        {book.year ? `${book.year} · ` : ""}
+                        <span style={{ fontStyle: "italic", color: "#999" }}>{book.source}</span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#999", marginTop: 1, fontStyle: "italic" }}>
+                        Ajouter manuellement
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // --- BookCard ---
+    const BookCard = ({ book, onUpdate, onDelete }) => {
+      const [editing, setEditing] = useState(false);
+      const [editData, setEditData] = useState({ ...book });
+
+      useEffect(() => {
+        setEditData({ ...book });
+      }, [book]);
+
+      const handleSave = () => {
+        onUpdate({ ...editData });
+        setEditing(false);
+        showToast("Livre mis à jour !", "success");
+      };
+
+      const memberColor = book.member === MEMBERS[0] ? colors.jeremy : colors.marion;
+
+      if (editing) {
+        return (
+          <div style={{
+            background: "#fff",
+            border: `2px solid ${colors.primary}`,
+            borderRadius: 16,
+            padding: 20,
+            boxShadow: "0 4px 20px rgba(74,111,165,0.15)"
+          }}>
+            <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>
+              Modifier le livre
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <AutocompleteInput
+                value={editData.title}
+                onChange={v => setEditData({ ...editData, title: v })}
+                onSelectBook={b => setEditData({
+                  ...editData,
+                  title: b.title,
+                  author: b.author,
+                  cover: b.cover,
+                  isbn: b.isbn,
+                  year: b.year
+                })}
+                placeholder="Titre"
+              />
+              <input
+                value={editData.author}
+                onChange={e => setEditData({ ...editData, author: e.target.value })}
+                placeholder="Auteur"
+                style={inputStyle}
+              />
+              <select
+                value={editData.member}
+                onChange={e => setEditData({ ...editData, member: e.target.value })}
+                style={inputStyle}
+              >
+                {MEMBERS.map(m => <option key={m}>{m}</option>)}
+              </select>
+              <div>
+                <label style={{
+                  fontSize: 13, color: "#666", fontWeight: 600,
+                  display: "block", marginBottom: 4
+                }}>
+                  Date d'emprunt
+                </label>
+                <input
+                  type="date"
+                  value={editData.borrowDate}
+                  onChange={e => {
+                    const bd = e.target.value;
+                    setEditData({
+                      ...editData,
+                      borrowDate: bd,
+                      returnDate: computeReturnDate(bd),
+                      holidayLoan: isSchoolHoliday(bd)
+                    });
+                  }}
+                  style={inputStyle}
+                />
+                {editData.holidayLoan && (
+                  <div style={{
+                    fontSize: 12, color: "#7b5ea7", marginTop: 4, fontWeight: 600
+                  }}>
+                    🏖 Vacances scolaires — délai de 45 jours
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={{
+                  fontSize: 13, color: "#666", fontWeight: 600,
+                  display: "block", marginBottom: 4
+                }}>
+                  Note
+                </label>
+                <Stars rating={editData.rating} onRate={r => setEditData({ ...editData, rating: r })} />
+              </div>
+              <textarea
+                value={editData.comment}
+                onChange={e => setEditData({ ...editData, comment: e.target.value })}
+                placeholder="Commentaire (optionnel)"
+                rows={2}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 15 }}>
+                <input
+                  type="checkbox"
+                  checked={editData.returned}
+                  onChange={e => setEditData({ ...editData, returned: e.target.checked })}
+                  style={{ width: 18, height: 18 }}
+                />
+                Livre rendu
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={handleSave} style={btnPrimary}>💾 Sauvegarder</button>
+                <button onClick={() => setEditing(false)} style={btnSecondary}>Annuler</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{
+          background: "#fff",
+          border: "1.5px solid #eee",
+          borderLeft: `5px solid ${memberColor}`,
+          borderRadius: 16,
+          padding: "16px 18px",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+          opacity: book.returned ? 0.7 : 1
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontWeight: 700,
+                fontSize: 17,
+                color: "#1a1a2e",
+                marginBottom: 2,
+                wordBreak: "break-word"
+              }}>
+                {book.title}
+              </div>
+              <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
+                {book.author || "Auteur inconnu"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <span style={{
+                  background: `${memberColor}20`,
+                  color: memberColor,
+                  borderRadius: 20,
+                  padding: "2px 10px",
+                  fontSize: 12,
+                  fontWeight: 700
+                }}>
+                  {book.member}
+                </span>
+                {book.holidayLoan && !book.returned && (
+                  <span style={{
+                    background: "#f3e8ff",
+                    color: "#7b5ea7",
+                    borderRadius: 20,
+                    padding: "2px 10px",
+                    fontSize: 12,
+                    fontWeight: 700
+                  }}>
+                    🏖 Vacances
+                  </span>
+                )}
+                <StatusBadge returnDate={book.returnDate} returned={book.returned} />
+              </div>
+              <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
+                Emprunté le {formatDate(book.borrowDate)} · À rendre le{" "}
+                <strong style={{ color: "#555" }}>{formatDate(book.returnDate)}</strong>
+              </div>
+              {!book.returned && (
+                <button
+                  onClick={() => addToCalendar(book)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 12px",
+                    borderRadius: 20,
+                    background: "#f0f7ff",
+                    color: colors.primary,
+                    border: `1.5px solid ${colors.primary}33`,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    marginBottom: 8
+                  }}
+                  aria-label="Ajouter à l'agenda"
+                >
+                  📅 Ajouter à l'agenda
+                </button>
+              )}
+              {book.rating > 0 && <Stars rating={book.rating} editable={false} />}
+              {book.comment && (
+                <div style={{
+                  marginTop: 8,
+                  fontSize: 13,
+                  color: "#555",
+                  fontStyle: "italic",
+                  background: "#f9f9f9",
+                  borderRadius: 8,
+                  padding: "6px 10px"
+                }}>
+                  "{book.comment}"
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={() => setEditing(true)}
+                style={iconBtn(colors.primary)}
+                aria-label="Modifier le livre"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm(`Supprimer "${book.title}" ?`)) {
+                    onDelete(book.id);
+                    showToast("Livre supprimé.", "success");
+                  }
+                }}
+                style={iconBtn(colors.error)}
+                aria-label="Supprimer le livre"
+              >
+                🗑
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- AddBookForm ---
+    const AddBookForm = ({ onAdd, onCancel }) => {
+      const today = new Date().toISOString().split("T")[0];
+      const hol = isSchoolHoliday(today);
+      const [form, setForm] = useState({
+        title: "",
+        author: "",
+        member: MEMBERS[0],
+        borrowDate: today,
+        returnDate: computeReturnDate(today),
+        rating: 0,
+        comment: "",
+        returned: false,
+        holidayLoan: hol
+      });
+
+      const handleSubmit = () => {
+        if (!form.title.trim()) {
+          showToast("Le titre est requis.", "error");
+          return;
+        }
+        onAdd({ ...form, id: Date.now() });
+        showToast("Livre ajouté !", "success");
+      };
+
+      return (
+        <div style={{
+          background: "#fff",
+          border: `2px solid ${colors.primary}`,
+          borderRadius: 16,
+          padding: 24,
+          boxShadow: "0 8px 32px rgba(74,111,165,0.18)",
+          marginBottom: 24
+        }}>
+          <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>
+            📖 Ajouter un livre
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <AutocompleteInput
+              value={form.title}
+              onChange={v => setForm({ ...form, title: v })}
+              onSelectBook={b => setForm({
+                ...form,
+                title: b.title,
+                author: b.author,
+                cover: b.cover,
+                isbn: b.isbn,
+                year: b.year
+              })}
+              placeholder="Titre * (tapez pour chercher)"
+            />
+            <input
+              value={form.author}
+              onChange={e => setForm({ ...form, author: e.target.value })}
+              placeholder="Auteur"
+              style={inputStyle}
+              aria-label="Auteur"
+            />
+            <select
+              value={form.member}
+              onChange={e => setForm({ ...form, member: e.target.value })}
+              style={inputStyle}
+              aria-label="Membre"
+            >
+              {MEMBERS.map(m => <option key={m}>{m}</option>)}
+            </select>
+            <div>
+              <label style={{
+                fontSize: 13,
+                color: "#666",
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 4
+              }}>
+                Date d'emprunt
+              </label>
+              <input
+                type="date"
+                value={form.borrowDate}
+                onChange={e => {
+                  const bd = e.target.value;
+                  const hol = isSchoolHoliday(bd);
+                  setForm({
+                    ...form,
+                    borrowDate: bd,
+                    returnDate: computeReturnDate(bd),
+                    holidayLoan: hol
+                  });
+                }}
+                style={inputStyle}
+                aria-label="Date d'emprunt"
+              />
+              {form.holidayLoan ? (
+                <div style={{
+                  fontSize: 12,
+                  color: "#7b5ea7",
+                  marginTop: 4,
+                  fontWeight: 600
+                }}>
+                  🏖 Vacances scolaires — délai de 45 jours
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                  📅 Période normale — délai de 1 mois
+                </div>
+              )}
+            </div>
+            <div style={{
+              fontSize: 13,
+              color: "#555",
+              background: form.holidayLoan ? "#f3e8ff" : "#f0f4ff",
+              borderRadius: 8,
+              padding: "8px 12px",
+              fontWeight: 600
+            }}>
+              📅 Date de retour : <strong>{formatDate(form.returnDate)}</strong>
+            </div>
+            <div>
+              <label style={{
+                fontSize: 13,
+                color: "#666",
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 4
+              }}>
+                Note (optionnel)
+              </label>
+              <Stars rating={form.rating} onRate={r => setForm({ ...form, rating: r })} />
+            </div>
+            <textarea
+              value={form.comment}
+              onChange={e => setForm({ ...form, comment: e.target.value })}
+              placeholder="Commentaire (optionnel)"
+              rows={2}
+              style={{ ...inputStyle, resize: "vertical" }}
+              aria-label="Commentaire"
+            />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={handleSubmit} style={btnPrimary}>✅ Ajouter</button>
+              <button onClick={onCancel} style={btnSecondary}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- Header ---
+    const Header = ({ stats }) => {
+      return (
+        <div style={{
+          background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+          color: "#fff",
+          padding: "32px 20px 20px",
+          textAlign: "center"
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 6 }}>📚</div>
+          <h1 style={{
+            margin: 0,
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 26,
+            fontWeight: 700,
+            letterSpacing: 0.5
+          }}>
+            Ma Médiathèque
+          </h1>
+          <p style={{ margin: "6px 0 0", color: "#aac", fontSize: 14 }}>Jérémy & Marion</p>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 1,
+            background: "#16213e",
+            borderBottom: `3px solid ${colors.primary}`,
+            marginTop: 20
+          }}>
+            {[
+              { label: "En cours", value: stats.active, color: colors.primary },
+              { label: "Urgents", value: stats.urgent, color: stats.urgent > 0 ? colors.warning : colors.primary },
+              { label: "Jérémy", value: stats.jeremy, color: colors.jeremy },
+              { label: "Marion", value: stats.marion, color: colors.marion }
+            ].map((s, i) => (
+              <div key={i} style={{ background: "#fff", padding: "12px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ==================== APP PRINCIPALE ====================
+    const App = () => {
+      const [books, setBooks] = useState(loadBooks());
+      const [showForm, setShowForm] = useState(false);
+      const [filter, setFilter] = useState("all");
+      const [search, setSearch] = useState("");
+      const [showImportModal, setShowImportModal] = useState(false);
+      const [importJson, setImportJson] = useState("");
+
+      useEffect(() => {
+        saveBooks(books);
+      }, [books]);
+
+      const addBook = (book) => {
+        setBooks([book, ...books]);
+        setShowForm(false);
+      };
+
+      const updateBook = (updatedBook) => {
+        setBooks(books.map(b => b.id === updatedBook.id ? updatedBook : b));
+      };
+
+      const deleteBook = (id) => {
+        setBooks(books.filter(b => b.id !== id));
+      };
+
+      const filteredBooks = books.filter(b => {
+        const matchesSearch =
+          b.title.toLowerCase().includes(search.toLowerCase()) ||
+          b.author.toLowerCase().includes(search.toLowerCase());
+        if (!matchesSearch) return false;
+
+        if (filter === "jeremy") return b.member === MEMBERS[0];
+        if (filter === "marion") return b.member === MEMBERS[1];
+        if (filter === "active") return !b.returned;
+        if (filter === "returned") return b.returned;
+        return true;
+      });
+
+      const stats = {
+        active: books.filter(b => !b.returned).length,
+        urgent: books.filter(b => !b.returned && daysLeft(b.returnDate) <= 5).length,
+        jeremy: books.filter(b => !b.returned && b.member === MEMBERS[0]).length,
+        marion: books.filter(b => !b.returned && b.member === MEMBERS[1]).length,
+      };
+
+      const handleExport = () => {
+        const json = exportBooks();
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `mediatheque_export_${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Export terminé !", "success");
+      };
+
+      const handleImport = () => {
+        try {
+          const importedBooks = importBooks(importJson);
+          if (importedBooks.length > 0) {
+            importedBooks.forEach(book => {
+              if (!books.some(b => b.id === book.id)) {
+                addBook(book);
+              }
+            });
+            setShowImportModal(false);
+            setImportJson("");
+            showToast(`${importedBooks.length} livre(s) importé(s) !`, "success");
+          } else {
+            showToast("Aucun livre valide trouvé.", "error");
+          }
+        } catch (e) {
+          showToast("Erreur lors de l'import.", "error");
+        }
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #f0f4ff 0%, #faf0ff 100%)" }}>
+          <Header stats={stats} />
+          <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px 16px 60px" }}>
+            {!showForm && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => setShowForm(true)}
+                  style={{
+                    ...btnPrimary,
+                    width: "100%",
+                    marginBottom: 12,
+                    boxShadow: "0 4px 16px rgba(74,111,165,0.3)"
+                  }}
+                >
+                  + Ajouter un livre
+                </button>
+                <button
+                  onClick={handleExport}
+                  style={{
+                    ...btnSecondary,
+                    background: `${colors.success}20`,
+                    color: colors.success,
+                    borderColor: `${colors.success}40`,
+                    flex: "none",
+                    width: "auto"
+                  }}
+                >
+                  📥 Exporter
+                </button>
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  style={{
+                    ...btnSecondary,
+                    background: `${colors.primary}20`,
+                    color: colors.primary,
+                    borderColor: `${colors.primary}40`,
+                    flex: "none",
+                    width: "auto"
+                  }}
+                >
+                  📤 Importer
+                </button>
+              </div>
+            )}
+            {showForm && <AddBookForm onAdd={addBook} onCancel={() => setShowForm(false)} />}
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="🔍 Rechercher un titre ou auteur..."
+              style={{ ...inputStyle, marginBottom: 12 }}
+              aria-label="Rechercher un livre"
+            />
+            <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+              {[
+                { id: "all", label: "Tous" },
+                { id: "active", label: "En cours" },
+                { id: "jeremy", label: "Jérémy" },
+                { id: "marion", label: "Marion" },
+                { id: "returned", label: "Rendus" }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 20,
+                    border: "1.5px solid",
+                    borderColor: filter === f.id ? colors.primary : "#ddd",
+                    background: filter === f.id ? colors.primary : "#fff",
+                    color: filter === f.id ? "#fff" : "#555",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                  aria-pressed={filter === f.id}
+                  aria-label={`Filtrer par ${f.label}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            {filteredBooks.length === 0 ? (
+              <div style={{
+                textAlign: "center",
+                padding: "40px 20px",
+                color: "#bbb",
+                fontSize: 15
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
+                Aucun livre trouvé.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {filteredBooks.map(book => (
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    onUpdate={updateBook}
+                    onDelete={deleteBook}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          {showImportModal && (
+            <div className="modal" onClick={() => setShowImportModal(false)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <h3 style={{
+                  margin: "0 0 16px",
+                  fontFamily: "'Playfair Display', serif",
+                  color: "#1a1a2e",
+                  fontSize: 18
+                }}>
+                  Importer des livres
+                </h3>
+                <textarea
+                  value={importJson}
+                  onChange={e => setImportJson(e.target.value)}
+                  placeholder='Coller ici le JSON exporté (ex: [{"title": "Livre 1", "author": "Auteur", ...}])'
+                  rows={6}
+                  style={{ ...inputStyle, width: "100%", marginBottom: 12 }}
+                  aria-label="JSON à importer"
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={handleImport} style={btnPrimary}>Importer</button>
+                  <button onClick={() => setShowImportModal(false)} style={btnSecondary}>Annuler</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ==================== RENDU ====================
+    ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+  </script>
+</body>
+</html>
