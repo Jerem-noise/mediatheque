@@ -1,213 +1,178 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Médiathèque - Gestion de Bibliothèque</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Médiathèque</title>
 
-    <style>
-        .book-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .book-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -8px rgba(0,0,0,0.15); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-    </style>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+<style>
+body {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    background: #f5f5f7;
+}
+
+.card {
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.glass {
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.7);
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+</style>
 </head>
 
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body>
+
 <div id="app"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
 <script type="text/babel">
 
-// --- ICONS ---
-const Icon = ({ name, className = "w-5 h-5", ...props }) => {
-    const [iconHtml, setIconHtml] = React.useState("");
-
-    React.useEffect(() => {
-        if (window.lucide && window.lucide.icons[name]) {
-            const icon = window.lucide.icons[name];
-
-            const attributes = {
-                xmlns: "http://www.w3.org/2000/svg",
-                width: "24",
-                height: "24",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                "stroke-width": "2",
-                "stroke-linecap": "round",
-                "stroke-linejoin": "round",
-                class: className,
-                ...props
-            };
-
-            const attrString = Object.entries(attributes)
-                .map(([k,v]) => `${k}="${v}"`).join(" ");
-
-            const childNodes = icon[1].map(node => {
-                const nodeAttrs = Object.entries(node[1])
-                    .map(([k,v]) => `${k}="${v}"`).join(" ");
-                return `<${node[0]} ${nodeAttrs} />`;
-            }).join("");
-
-            setIconHtml(`<svg ${attrString}>${childNodes}</svg>`);
-        }
-    }, [name, className]);
-
-    return <span dangerouslySetInnerHTML={{ __html: iconHtml }} />;
-};
-
-// --- 🔥 PROXY UNIQUE (TON CLOUDLFARE WORKER) ---
 const PROXY = "https://proxy-bnf.batteux-jerem.workers.dev/?url=";
 
-const fetchWithProxy = async (targetUrl) => {
-    const url = `${PROXY}${encodeURIComponent(targetUrl)}`;
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
+const fetchWithProxy = async (url) => {
+    const res = await fetch(PROXY + encodeURIComponent(url));
     return await res.text();
 };
 
-// --- BnF ---
-const searchBnf = async (query) => {
-    const url =
-        `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=` +
-        encodeURIComponent(`bib.anywhere all "${query}" and bib.recordtype all "a"`) +
-        `&maximumRecords=8`;
+// --- SEARCH SIMPLE ---
+const searchBooks = async (q) => {
+    if (q.length < 2) return [];
 
-    const xmlText = await fetchWithProxy(url);
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=6`;
+    const data = JSON.parse(await fetchWithProxy(url));
 
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(xmlText, "text/xml");
-
-    const records = xml.getElementsByTagName("srw:record");
-    const books = [];
-
-    for (let i = 0; i < records.length; i++) {
-        const r = records[i];
-
-        books.push({
-            id: `bnf-${i}-${Date.now()}`,
-            title: r.getElementsByTagName("dc:title")[0]?.textContent || "Titre inconnu",
-            author: r.getElementsByTagName("dc:creator")[0]?.textContent || "Auteur inconnu",
-            isbn: "",
-            source: "BnF"
-        });
-    }
-
-    return books;
-};
-
-// --- OpenLibrary ---
-const searchOpenLibrary = async (query) => {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8`;
-
-    const jsonText = await fetchWithProxy(url);
-    const data = JSON.parse(jsonText);
-
-    return (data.docs || []).map((d, i) => ({
-        id: `ol-${i}-${Date.now()}`,
-        title: d.title || "Titre inconnu",
-        author: d.author_name?.[0] || "Auteur inconnu",
-        isbn: d.isbn?.[0] || "",
-        source: "OpenLibrary"
+    return (data.docs || []).map((b, i) => ({
+        id: i,
+        title: b.title,
+        author: b.author_name?.[0] || "Auteur inconnu"
     }));
 };
 
-// --- ORCHESTRATEUR ---
-const searchBooks = async (query) => {
-    if (!query || query.length < 2) return [];
+function App() {
 
-    try {
-        return await searchBnf(query);
-    } catch {
-        return await searchOpenLibrary(query);
-    }
+const [tab, setTab] = React.useState("search");
+const [q, setQ] = React.useState("");
+const [results, setResults] = React.useState([]);
+const [library, setLibrary] = React.useState(() =>
+    JSON.parse(localStorage.getItem("lib") || "[]")
+);
+
+React.useEffect(() => {
+    localStorage.setItem("lib", JSON.stringify(library));
+}, [library]);
+
+React.useEffect(() => {
+    const t = setTimeout(async () => {
+        if (q.length > 1) {
+            setResults(await searchBooks(q));
+        } else {
+            setResults([]);
+        }
+    }, 300);
+
+    return () => clearTimeout(t);
+}, [q]);
+
+const addBook = (b) => {
+    setLibrary([b, ...library]);
 };
 
-// ================= APP =================
-const MediathequeApp = () => {
-    const [books, setBooks] = React.useState(() =>
-        JSON.parse(localStorage.getItem("mediatheque_books") || "[]")
-    );
+return (
 
-    const [searchQuery, setSearchQuery] = React.useState("");
-    const [apiResults, setApiResults] = React.useState([]);
+<div className="pb-24">
 
-    React.useEffect(() => {
-        localStorage.setItem("mediatheque_books", JSON.stringify(books));
-    }, [books]);
+{/* HEADER iOS STYLE */}
+<div className="px-4 pt-6 pb-3">
+    <h1 className="text-2xl font-bold text-gray-900">📚 Médiathèque</h1>
+    <p className="text-sm text-gray-500">Ta bibliothèque personnelle</p>
+</div>
 
-    React.useEffect(() => {
-        const t = setTimeout(async () => {
-            if (searchQuery.length > 1) {
-                const res = await searchBooks(searchQuery);
-                setApiResults(res);
-            } else {
-                setApiResults([]);
-            }
-        }, 500);
+{/* SEARCH */}
+{tab === "search" && (
+<div className="px-4">
+    <input
+        className="w-full p-4 rounded-2xl bg-white shadow-sm outline-none"
+        placeholder="Rechercher un livre..."
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+    />
 
-        return () => clearTimeout(t);
-    }, [searchQuery]);
-
-    const addBook = (b) => {
-        setBooks(prev => [
-            { ...b, status: "disponible", addedAt: new Date().toLocaleDateString("fr-FR") },
-            ...prev
-        ]);
-        setSearchQuery("");
-        setApiResults([]);
-    };
-
-    return (
-        <div className="max-w-6xl mx-auto p-6">
-
-            <h1 className="text-2xl font-bold mb-6">Ma Médiathèque</h1>
-
-            <input
-                className="w-full p-3 border rounded-xl"
-                placeholder="Rechercher un livre..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-            />
-
-            {apiResults.length > 0 && (
-                <div className="mt-3 bg-white border rounded-xl">
-                    {apiResults.map(b => (
-                        <div key={b.id} className="p-3 flex justify-between">
-                            <div>
-                                <div className="font-semibold">{b.title}</div>
-                                <div className="text-sm text-gray-500">{b.author}</div>
-                            </div>
-                            <button onClick={() => addBook(b)}>Ajouter</button>
-                        </div>
-                    ))}
+    <div className="mt-4 space-y-3">
+        {results.map(b => (
+            <div key={b.id} className="card bg-white p-4 flex justify-between items-center">
+                <div>
+                    <div className="font-semibold">{b.title}</div>
+                    <div className="text-sm text-gray-500">{b.author}</div>
                 </div>
-            )}
-
-            <div className="mt-6 grid gap-3">
-                {books.map(b => (
-                    <div key={b.id} className="p-3 bg-white rounded-xl shadow">
-                        <div className="font-semibold">{b.title}</div>
-                        <div className="text-sm text-gray-500">{b.author}</div>
-                    </div>
-                ))}
+                <button
+                    className="bg-black text-white px-3 py-1 rounded-full text-sm"
+                    onClick={() => addBook(b)}
+                >
+                    +
+                </button>
             </div>
+        ))}
+    </div>
+</div>
+)}
 
+{/* LIBRARY */}
+{tab === "library" && (
+<div className="px-4 space-y-3">
+    {library.length === 0 && (
+        <div className="text-center text-gray-400 mt-10">
+            Aucun livre
         </div>
-    );
-};
+    )}
 
-const root = ReactDOM.createRoot(document.getElementById("app"));
-root.render(<MediathequeApp />);
+    {library.map((b, i) => (
+        <div key={i} className="card bg-white p-4">
+            <div className="font-semibold">{b.title}</div>
+            <div className="text-sm text-gray-500">{b.author}</div>
+        </div>
+    ))}
+</div>
+)}
+
+{/* BOTTOM NAV (iOS style) */}
+<div className="bottom-nav glass border-t border-gray-200 flex justify-around py-3">
+
+<button onClick={() => setTab("search")} className="text-sm">
+🔍<div>Search</div>
+</button>
+
+<button onClick={() => setTab("library")} className="text-sm">
+📚<div>Library</div>
+</button>
+
+</div>
+
+</div>
+
+);
+
+}
+
+ReactDOM.render(<App />, document.getElementById("app"));
 
 </script>
+
 </body>
 </html>
