@@ -2,128 +2,54 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Médiathèque" />
-  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ma Médiathèque</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet" />
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: 'Lato', 'Helvetica Neue', sans-serif;
       background: linear-gradient(135deg, #f0f4ff 0%, #faf0ff 100%);
       min-height: 100vh;
     }
-    input, select, textarea, button {
-      font-family: inherit;
-    }
+    input, select, textarea, button { font-family: inherit; }
     .autocomplete-list {
-      position: absolute;
-      z-index: 1000;
-      background: #fff;
-      border: 1.5px solid #c5d8f5;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(74, 111, 165, 0.15);
-      max-height: 280px;
-      overflow-y: auto;
-      width: 100%;
-      left: 0;
-      top: 100%;
+      position: absolute; z-index: 1000; background: #fff;
+      border: 1.5px solid #c5d8f5; border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(74,111,165,0.15);
+      max-height: 280px; overflow-y: auto; width: 100%; left: 0; top: 100%;
     }
     .autocomplete-item {
-      padding: 10px 12px;
-      cursor: pointer;
+      padding: 10px 12px; cursor: pointer;
       border-bottom: 1px solid #f0f0f0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .autocomplete-item:last-child {
-      border-bottom: none;
-    }
-    .autocomplete-item:hover, .autocomplete-item.active {
-      background: #f0f4ff;
-    }
-    .autocomplete-wrapper {
-      position: relative;
-    }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover, .autocomplete-item.active { background: #f0f4ff; }
+    .autocomplete-wrapper { position: relative; }
     .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid #ddd;
-      border-top-color: #4a6fa5;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #ddd; border-top-color: #4a6fa5;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .toast {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1a1a2e;
-      color: #fff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 2000;
-      animation: slideIn 0.3s ease-out;
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1a1a2e; color: #fff; padding: 12px 24px;
+      border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 2000; animation: slideIn 0.3s ease-out;
     }
-    .toast.error {
-      background: #c0392b;
-    }
-    .toast.success {
-      background: #2e7d32;
-    }
-    .toast.info {
-      background: #1565c0;
-    }
-    @keyframes slideIn {
-      from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-      to { transform: translateX(-50%) translateY(0); opacity: 1; }
-    }
+    .toast.error { background: #c0392b; }
+    .toast.success { background: #2e7d32; }
+    @keyframes slideIn { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
     .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
       z-index: 1000;
     }
     .modal-content {
-      background: #fff;
-      padding: 24px;
-      border-radius: 16px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 8px 32px rgba(74, 111, 165, 0.18);
-    }
-    .manual-option {
-      padding: 10px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #666;
-      font-style: italic;
-    }
-    .manual-option:hover {
-      background: #f9f9f9;
+      background: #fff; padding: 24px; border-radius: 16px;
+      max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(74,111,165,0.18);
     }
   </style>
 </head>
@@ -131,15 +57,16 @@
   <div id="app"></div>
   <div id="toast-container"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <!-- Chargement des bibliothèques React -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
   <script type="text/babel">
     // ==================== CONSTANTES ====================
     const MEMBERS = ["Jérémy", "Marion"];
     const RATINGS = [1, 2, 3, 4, 5];
-    const STORAGE_KEY = "mediatheque_books_v7";
+    const STORAGE_KEY = "mediatheque_books_v8";
 
     const SCHOOL_HOLIDAYS = [
       { start: "2024-10-19", end: "2024-11-04" },
@@ -156,38 +83,50 @@
 
     // ==================== UTILITAIRES ====================
     const formatDate = (dateStr) => {
-      return new Date(dateStr).toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      });
+      try {
+        return new Date(dateStr).toLocaleDateString("fr-FR", {
+          day: "numeric", month: "long", year: "numeric"
+        });
+      } catch (e) {
+        return dateStr;
+      }
     };
 
     const isSchoolHoliday = (dateStr) => {
-      const d = new Date(dateStr);
-      return SCHOOL_HOLIDAYS.some(({ start, end }) => {
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        return d >= startDate && d <= endDate;
-      });
+      try {
+        const d = new Date(dateStr);
+        return SCHOOL_HOLIDAYS.some(({ start, end }) => {
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+          return d >= startDate && d <= endDate;
+        });
+      } catch (e) {
+        return false;
+      }
     };
 
     const computeReturnDate = (dateStr) => {
-      const d = new Date(dateStr);
-      if (isSchoolHoliday(dateStr)) {
-        d.setDate(d.getDate() + 45);
-      } else {
-        d.setMonth(d.getMonth() + 1);
+      try {
+        const d = new Date(dateStr);
+        if (isSchoolHoliday(dateStr)) {
+          d.setDate(d.getDate() + 45);
+        } else {
+          d.setMonth(d.getMonth() + 1);
+        }
+        return d.toISOString().split("T")[0];
+      } catch (e) {
+        return new Date().toISOString().split("T")[0];
       }
-      return d.toISOString().split("T")[0];
     };
 
     const daysLeft = (returnDate) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const ret = new Date(returnDate);
-      ret.setHours(0, 0, 0, 0);
-      return Math.ceil((ret - today) / 86400000);
+      try {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const ret = new Date(returnDate); ret.setHours(0, 0, 0, 0);
+        return Math.ceil((ret - today) / 86400000);
+      } catch (e) {
+        return 0;
+      }
     };
 
     // --- Stockage ---
@@ -195,7 +134,7 @@
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
       } catch (e) {
-        showToast("Erreur lors de la sauvegarde.", "error");
+        console.error("Erreur sauvegarde:", e);
       }
     };
 
@@ -204,13 +143,18 @@
         const data = localStorage.getItem(STORAGE_KEY);
         return data ? JSON.parse(data) : [];
       } catch (e) {
-        showToast("Erreur lors du chargement.", "error");
+        console.error("Erreur chargement:", e);
         return [];
       }
     };
 
     const exportBooks = () => {
-      return JSON.stringify(loadBooks(), null, 2);
+      try {
+        return JSON.stringify(loadBooks(), null, 2);
+      } catch (e) {
+        console.error("Erreur export:", e);
+        return "[]";
+      }
     };
 
     const importBooks = (jsonString) => {
@@ -218,72 +162,47 @@
         const books = JSON.parse(jsonString);
         return Array.isArray(books) ? books : [];
       } catch (e) {
-        showToast("Format JSON invalide.", "error");
+        console.error("Erreur import:", e);
         return [];
       }
     };
 
     // --- Notifications ---
     const showToast = (message, type = "info") => {
-      const container = document.getElementById("toast-container");
-      const toast = document.createElement("div");
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+      try {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      } catch (e) {
+        console.error("Erreur toast:", e);
+      }
     };
 
-    // ==================== API BnF (avec contournement CORS définitif) ====================
+    // ==================== API BnF (avec contournement CORS) ====================
     let searchTimeout = null;
 
-    // Liste des proxys CORS fiables (testés et fonctionnels en 2026)
+    // Liste des proxys CORS publics (testés en 2026)
     const CORS_PROXIES = [
-      {
-        name: "Cloudflare Workers (recommandé)",
-        url: "https://bnf-proxy.jeremybatteux.workers.dev/?url=",
-        active: true
-      },
-      {
-        name: "CorsProxy.io",
-        url: "https://corsproxy.io/?",
-        active: true
-      },
-      {
-        name: "ThingProxy",
-        url: "https://thingproxy.freeboard.io/fetch/",
-        active: true
-      },
-      {
-        name: "AllOrigins",
-        url: "https://api.allorigins.win/get?url=",
-        active: true
-      }
+      "https://corsproxy.io/?",
+      "https://thingproxy.freeboard.io/fetch/",
+      "https://api.allorigins.win/get?url="
     ];
 
     // Fonction pour essayer les proxys un par un
     const fetchWithProxy = async (url) => {
       for (const proxy of CORS_PROXIES) {
-        if (!proxy.active) continue;
-
         try {
-          let proxyUrl;
-          if (proxy.url.endsWith("?")) {
-            proxyUrl = proxy.url + encodeURIComponent(url);
-          } else if (proxy.url.endsWith("/")) {
-            proxyUrl = proxy.url + encodeURIComponent(url);
-          } else {
-            proxyUrl = proxy.url + encodeURIComponent(url);
-          }
-
+          const proxyUrl = proxy + encodeURIComponent(url);
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout de 5s
 
           const res = await fetch(proxyUrl, {
             signal: controller.signal,
-            headers: {
-              "Accept": "application/json",
-              "Origin": window.location.origin
-            }
+            headers: { "Accept": "application/json" }
           });
 
           clearTimeout(timeoutId);
@@ -297,7 +216,7 @@
             return data;
           }
         } catch (e) {
-          console.warn(`Proxy ${proxy.name} échoué:`, e.message);
+          console.warn(`Proxy ${proxy} échoué:`, e.message);
           continue;
         }
       }
@@ -310,10 +229,9 @@
       try {
         const results = await searchBnf(query);
         if (results.length > 0) {
-          console.log("Résultats BnF obtenus avec succès.");
           return results;
         } else {
-          // Si aucun résultat, proposer une option manuelle
+          // Option manuelle si aucun résultat
           return [{
             title: query,
             author: "",
@@ -325,8 +243,8 @@
           }];
         }
       } catch (e) {
-        console.warn("Recherche BnF échouée:", e);
-        showToast("Impossible de contacter la BnF. Utilisation de la saisie manuelle.", "error");
+        console.error("Erreur recherche BnF:", e);
+        showToast("Impossible de contacter la BnF. Saisie manuelle activée.", "error");
         return [{
           title: query,
           author: "",
@@ -339,22 +257,19 @@
       }
     };
 
-    // Recherche BnF avec JSON et contournement CORS
     const searchBnf = async (query) => {
       const q = encodeURIComponent(query);
-      // URL de l'API BnF avec recordSchema=json (meilleur format)
       const bnfUrl = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20all%20%22${q}%22%20and%20bib.recordtype%20all%20%22a%22&recordSchema=json&maximumRecords=8`;
 
       try {
         const data = await fetchWithProxy(bnfUrl);
         return parseBnfJson(data);
       } catch (e) {
-        console.error("Erreur finale avec BnF:", e);
+        console.error("Erreur BnF:", e);
         throw e;
       }
     };
 
-    // Parsing du JSON BnF (optimisé pour les livres français)
     const parseBnfJson = (data) => {
       if (!data || !data.records || !Array.isArray(data.records)) {
         console.warn("Format BnF inattendu:", data);
@@ -362,104 +277,94 @@
       }
 
       return data.records.map(record => {
-        // Fonction pour extraire un champ depuis le JSON BnF
-        const getField = (tag, code = null) => {
-          if (!record.record || !record.record.recordData) return "";
-          const fields = record.record.recordData;
-          const field = fields.find(f => f.tag === tag);
-          if (!field) return "";
+        try {
+          const getField = (tag, code = null) => {
+            if (!record.record || !record.record.recordData) return "";
+            const fields = record.record.recordData;
+            const field = fields.find(f => f.tag === tag);
+            if (!field) return "";
 
-          if (code) {
-            const subfield = field.subfields?.find(sf => sf.code === code);
-            return subfield ? subfield.value : "";
+            if (code) {
+              const subfield = field.subfields?.find(sf => sf.code === code);
+              return subfield ? subfield.value : "";
+            }
+            return field.subfields?.map(sf => sf.value).join(" ").trim() || "";
+          };
+
+          let title = getField("200", "a");
+          const subtitle = getField("200", "e");
+          if (subtitle) title += ` : ${subtitle}`;
+
+          let author = getField("200", "f");
+          if (!author) {
+            author = `${getField("700", "a")} ${getField("700", "b")}`.trim();
           }
-          // Retourne tous les sous-champs concaténés
-          return field.subfields?.map(sf => sf.value).join(" ").trim() || "";
-        };
+          if (!author) {
+            author = `${getField("701", "a")} ${getField("701", "b")}`.trim();
+          }
 
-        // Extraction des données
-        let title = getField("200", "a");
-        const subtitle = getField("200", "e");
-        if (subtitle) title += ` : ${subtitle}`;
+          let year = getField("210", "d");
+          year = year.replace(/[^0-9]/g, "").slice(0, 4);
 
-        // Essayer plusieurs champs pour l'auteur (priorité aux livres français)
-        let author = getField("200", "f");
-        if (!author) {
-          // Champ 700 pour les auteurs principaux
-          author = `${getField("700", "a")} ${getField("700", "b")}`.trim();
+          let isbn = getField("010", "a");
+          isbn = isbn.replace(/[^0-9X]/gi, "");
+
+          if (!title) return null;
+
+          return {
+            title: title,
+            author: author || "Auteur inconnu",
+            cover: isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` : null,
+            isbn: isbn || "",
+            year: year || "",
+            source: "BnF"
+          };
+        } catch (e) {
+          console.error("Erreur parsing BnF:", e);
+          return null;
         }
-        if (!author) {
-          // Champ 701 pour les co-auteurs
-          author = `${getField("701", "a")} ${getField("701", "b")}`.trim();
-        }
-        if (!author) {
-          // Champ 702 pour les autres contributeurs
-          author = `${getField("702", "a")} ${getField("702", "b")}`.trim();
-        }
-
-        // Année de publication (champ 210$d)
-        let year = getField("210", "d");
-        year = year.replace(/[^0-9]/g, "").slice(0, 4);
-
-        // ISBN (champ 010$a)
-        let isbn = getField("010", "a");
-        isbn = isbn.replace(/[^0-9X]/gi, "");
-
-        // Si aucun titre, on saute
-        if (!title || title === "Titre inconnu") return null;
-
-        return {
-          title: title,
-          author: author || "Auteur inconnu",
-          cover: isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` : null,
-          isbn: isbn || "",
-          year: year || "",
-          source: "BnF"
-        };
-      }).filter(book => book !== null); // Supprimer les entrées null
+      }).filter(book => book !== null);
     };
 
     // --- Calendrier ---
     const addToCalendar = (book) => {
-      const d = book.returnDate.replace(/-/g, "");
-      const dNext = (() => {
-        const dt = new Date(book.returnDate);
-        dt.setDate(dt.getDate() + 1);
-        return dt.toISOString().split("T")[0].replace(/-/g, "");
-      })();
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      try {
+        const d = book.returnDate.replace(/-/g, "");
+        const dNext = (() => {
+          const dt = new Date(book.returnDate);
+          dt.setDate(dt.getDate() + 1);
+          return dt.toISOString().split("T")[0].replace(/-/g, "");
+        })();
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-      if (isIOS) {
-        const ics = [
-          "BEGIN:VCALENDAR",
-          "VERSION:2.0",
-          "BEGIN:VEVENT",
-          `DTSTART;VALUE=DATE:${d}`,
-          `DTEND;VALUE=DATE:${dNext}`,
-          `SUMMARY:📚 Rendre : ${book.title} (${book.member})`,
-          `DESCRIPTION:Emprunté le ${formatDate(book.borrowDate)}`,
-          "BEGIN:VALARM",
-          "TRIGGER:-PT0S",
-          "ACTION:DISPLAY",
-          "DESCRIPTION:Rappel médiathèque",
-          "END:VALARM",
-          "END:VEVENT",
-          "END:VCALENDAR"
-        ].join("\r\n");
-        const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `rappel_${book.title.replace(/\s+/g, "_")}.ics`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const title = encodeURIComponent(`📚 Rendre : ${book.title} (${book.member})`);
-        const details = encodeURIComponent(`Emprunté le ${formatDate(book.borrowDate)}`);
-        window.open(
-          `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${d}/${dNext}&details=${details}`,
-          "_blank"
-        );
+        if (isIOS) {
+          const ics = [
+            "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT",
+            `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${dNext}`,
+            `SUMMARY:📚 Rendre : ${book.title} (${book.member})`,
+            `DESCRIPTION:Emprunté le ${formatDate(book.borrowDate)}`,
+            "BEGIN:VALARM", "TRIGGER:-PT0S", "ACTION:DISPLAY",
+            "DESCRIPTION:Rappel médiathèque", "END:VALARM",
+            "END:VEVENT", "END:VCALENDAR"
+          ].join("\r\n");
+          const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `rappel_${book.title.replace(/\s+/g, "_")}.ics`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } else {
+          const title = encodeURIComponent(`📚 Rendre : ${book.title} (${book.member})`);
+          const details = encodeURIComponent(`Emprunté le ${formatDate(book.borrowDate)}`);
+          window.open(
+            `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${d}/${dNext}&details=${details}`,
+            "_blank"
+          );
+        }
+      } catch (e) {
+        console.error("Erreur calendrier:", e);
+        showToast("Impossible d'ajouter au calendrier.", "error");
       }
     };
 
@@ -533,71 +438,28 @@
     const StatusBadge = ({ returnDate, returned }) => {
       if (returned) {
         return (
-          <span
-            style={{
-              background: "#e8f5e9",
-              color: "#2e7d32",
-              borderRadius: 20,
-              padding: "3px 12px",
-              fontSize: 12,
-              fontWeight: 700
-            }}
-            aria-label="Livre rendu"
-          >
+          <span style={{ background: "#e8f5e9", color: "#2e7d32", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }} aria-label="Livre rendu">
             ✓ Rendu
           </span>
         );
       }
-
       const days = daysLeft(returnDate);
       if (days < 0) {
         return (
-          <span
-            style={{
-              background: "#fde8e8",
-              color: colors.error,
-              borderRadius: 20,
-              padding: "3px 12px",
-              fontSize: 12,
-              fontWeight: 700
-            }}
-            aria-label={`En retard de ${Math.abs(days)} jours`}
-          >
+          <span style={{ background: "#fde8e8", color: colors.error, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }} aria-label={`En retard de ${Math.abs(days)} jours`}>
             ⚠ En retard de {Math.abs(days)}j
           </span>
         );
       }
-
       if (days <= 5) {
         return (
-          <span
-            style={{
-              background: "#fff3e0",
-              color: colors.warning,
-              borderRadius: 20,
-              padding: "3px 12px",
-              fontSize: 12,
-              fontWeight: 700
-            }}
-            aria-label={`${days} jours restants`}
-          >
+          <span style={{ background: "#fff3e0", color: colors.warning, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }} aria-label={`${days} jours restants`}>
             ⏰ {days}j restants
           </span>
         );
       }
-
       return (
-        <span
-          style={{
-            background: "#e3f2fd",
-            color: colors.info,
-            borderRadius: 20,
-            padding: "3px 12px",
-            fontSize: 12,
-            fontWeight: 700
-          }}
-          aria-label={`${days} jours restants`}
-        >
+        <span style={{ background: "#e3f2fd", color: colors.info, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }} aria-label={`${days} jours restants`}>
           📅 {days}j restants
         </span>
       );
@@ -614,21 +476,11 @@
               onClick={() => onRate && onRate(s)}
               onMouseEnter={() => editable && setHover(s)}
               onMouseLeave={() => editable && setHover(0)}
-              style={{
-                cursor: editable ? "pointer" : "default",
-                fontSize: 20,
-                color: s <= (hover || rating) ? "#f4a500" : "#ddd",
-                transition: "color 0.15s"
-              }}
+              style={{ cursor: editable ? "pointer" : "default", fontSize: 20, color: s <= (hover || rating) ? "#f4a500" : "#ddd", transition: "color 0.15s" }}
               role="button"
               tabIndex={editable ? 0 : -1}
               aria-label={`Note : ${s} étoiles`}
-              onKeyDown={(e) => {
-                if (editable && (e.key === "Enter" || e.key === " ")) {
-                  onRate(s);
-                  e.preventDefault();
-                }
-              }}
+              onKeyDown={(e) => { if (editable && (e.key === "Enter" || e.key === " ")) { onRate(s); e.preventDefault(); } }}
             >
               ★
             </span>
@@ -637,7 +489,7 @@
       );
     };
 
-    // --- AutocompleteInput (avec option manuelle) ---
+    // --- AutocompleteInput ---
     const AutocompleteInput = ({ value, onChange, onSelectBook, placeholder }) => {
       const [suggestions, setSuggestions] = useState([]);
       const [loading, setLoading] = useState(false);
@@ -662,10 +514,16 @@
         if (val.length >= 2) {
           setLoading(true);
           searchTimeout = setTimeout(async () => {
-            const results = await searchBooks(val);
-            setSuggestions(results);
-            setShowList(results.length > 0);
-            setLoading(false);
+            try {
+              const results = await searchBooks(val);
+              setSuggestions(results);
+              setShowList(results.length > 0);
+            } catch (e) {
+              console.error("Erreur autocomplétion:", e);
+              setSuggestions([]);
+            } finally {
+              setLoading(false);
+            }
           }, 500);
         } else {
           setSuggestions([]);
@@ -709,8 +567,6 @@
               style={inputStyle}
               autoComplete="off"
               aria-label={placeholder}
-              aria-autocomplete="list"
-              aria-expanded={showList}
             />
             {loading && (
               <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
@@ -737,39 +593,27 @@
                       onError={(e) => e.target.style.display = "none"}
                     />
                   ) : !book.isManual ? (
-                    <div style={{
-                      width: 30, height: 42, background: "#f0f0f0", borderRadius: 3,
-                      flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14
-                    }}>
+                    <div style={{ width: 30, height: 42, background: "#f0f0f0", borderRadius: 3, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
                       📖
                     </div>
                   ) : (
                     <div style={{ width: 30, height: 42, flexShrink: 0 }}></div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontWeight: 700, fontSize: 14, color: "#1a1a2e",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-                    }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {book.title}
                     </div>
                     {book.author && !book.isManual && (
-                      <div style={{
-                        fontSize: 12, color: "#888", marginTop: 1,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-                      }}>
+                      <div style={{ fontSize: 12, color: "#888", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {book.author}
                       </div>
                     )}
                     {!book.isManual ? (
                       <div style={{ fontSize: 11, color: colors.primary, marginTop: 1 }}>
-                        {book.year ? `${book.year} · ` : ""}
-                        <span style={{ fontStyle: "italic", color: "#999" }}>{book.source}</span>
+                        {book.year ? `${book.year} · ` : ""}<span style={{ fontStyle: "italic", color: "#999" }}>{book.source}</span>
                       </div>
                     ) : (
-                      <div style={{ fontSize: 11, color: "#999", marginTop: 1, fontStyle: "italic" }}>
-                        Ajouter manuellement
-                      </div>
+                      <div style={{ fontSize: 11, color: "#999", marginTop: 1, fontStyle: "italic" }}>Ajouter manuellement</div>
                     )}
                   </div>
                 </div>
@@ -799,79 +643,34 @@
 
       if (editing) {
         return (
-          <div style={{
-            background: "#fff",
-            border: `2px solid ${colors.primary}`,
-            borderRadius: 16,
-            padding: 20,
-            boxShadow: "0 4px 20px rgba(74,111,165,0.15)"
-          }}>
-            <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>
-              Modifier le livre
-            </h3>
+          <div style={{ background: "#fff", border: `2px solid ${colors.primary}`, borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(74,111,165,0.15)" }}>
+            <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>Modifier le livre</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <AutocompleteInput
                 value={editData.title}
                 onChange={v => setEditData({ ...editData, title: v })}
-                onSelectBook={b => setEditData({
-                  ...editData,
-                  title: b.title,
-                  author: b.author,
-                  cover: b.cover,
-                  isbn: b.isbn,
-                  year: b.year
-                })}
+                onSelectBook={b => setEditData({ ...editData, title: b.title, author: b.author, cover: b.cover, isbn: b.isbn, year: b.year })}
                 placeholder="Titre"
               />
-              <input
-                value={editData.author}
-                onChange={e => setEditData({ ...editData, author: e.target.value })}
-                placeholder="Auteur"
-                style={inputStyle}
-              />
-              <select
-                value={editData.member}
-                onChange={e => setEditData({ ...editData, member: e.target.value })}
-                style={inputStyle}
-              >
+              <input value={editData.author} onChange={e => setEditData({ ...editData, author: e.target.value })} placeholder="Auteur" style={inputStyle} />
+              <select value={editData.member} onChange={e => setEditData({ ...editData, member: e.target.value })} style={inputStyle}>
                 {MEMBERS.map(m => <option key={m}>{m}</option>)}
               </select>
               <div>
-                <label style={{
-                  fontSize: 13, color: "#666", fontWeight: 600,
-                  display: "block", marginBottom: 4
-                }}>
-                  Date d'emprunt
-                </label>
+                <label style={{ fontSize: 13, color: "#666", fontWeight: 600, display: "block", marginBottom: 4 }}>Date d'emprunt</label>
                 <input
                   type="date"
                   value={editData.borrowDate}
                   onChange={e => {
                     const bd = e.target.value;
-                    setEditData({
-                      ...editData,
-                      borrowDate: bd,
-                      returnDate: computeReturnDate(bd),
-                      holidayLoan: isSchoolHoliday(bd)
-                    });
+                    setEditData({ ...editData, borrowDate: bd, returnDate: computeReturnDate(bd), holidayLoan: isSchoolHoliday(bd) });
                   }}
                   style={inputStyle}
                 />
-                {editData.holidayLoan && (
-                  <div style={{
-                    fontSize: 12, color: "#7b5ea7", marginTop: 4, fontWeight: 600
-                  }}>
-                    🏖 Vacances scolaires — délai de 45 jours
-                  </div>
-                )}
+                {editData.holidayLoan && <div style={{ fontSize: 12, color: "#7b5ea7", marginTop: 4, fontWeight: 600 }}>🏖 Vacances scolaires — délai de 45 jours</div>}
               </div>
               <div>
-                <label style={{
-                  fontSize: 13, color: "#666", fontWeight: 600,
-                  display: "block", marginBottom: 4
-                }}>
-                  Note
-                </label>
+                <label style={{ fontSize: 13, color: "#666", fontWeight: 600, display: "block", marginBottom: 4 }}>Note</label>
                 <Stars rating={editData.rating} onRate={r => setEditData({ ...editData, rating: r })} />
               </div>
               <textarea
@@ -882,12 +681,7 @@
                 style={{ ...inputStyle, resize: "vertical" }}
               />
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 15 }}>
-                <input
-                  type="checkbox"
-                  checked={editData.returned}
-                  onChange={e => setEditData({ ...editData, returned: e.target.checked })}
-                  style={{ width: 18, height: 18 }}
-                />
+                <input type="checkbox" checked={editData.returned} onChange={e => setEditData({ ...editData, returned: e.target.checked })} style={{ width: 18, height: 18 }} />
                 Livre rendu
               </label>
               <div style={{ display: "flex", gap: 8 }}>
@@ -900,104 +694,35 @@
       }
 
       return (
-        <div style={{
-          background: "#fff",
-          border: "1.5px solid #eee",
-          borderLeft: `5px solid ${memberColor}`,
-          borderRadius: 16,
-          padding: "16px 18px",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-          opacity: book.returned ? 0.7 : 1
-        }}>
+        <div style={{ background: "#fff", border: "1.5px solid #eee", borderLeft: `5px solid ${memberColor}`, borderRadius: 16, padding: "16px 18px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", opacity: book.returned ? 0.7 : 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontWeight: 700,
-                fontSize: 17,
-                color: "#1a1a2e",
-                marginBottom: 2,
-                wordBreak: "break-word"
-              }}>
+              <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 700, fontSize: 17, color: "#1a1a2e", marginBottom: 2, wordBreak: "break-word" }}>
                 {book.title}
               </div>
-              <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-                {book.author || "Auteur inconnu"}
-              </div>
+              <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>{book.author || "Auteur inconnu"}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                <span style={{
-                  background: `${memberColor}20`,
-                  color: memberColor,
-                  borderRadius: 20,
-                  padding: "2px 10px",
-                  fontSize: 12,
-                  fontWeight: 700
-                }}>
-                  {book.member}
-                </span>
-                {book.holidayLoan && !book.returned && (
-                  <span style={{
-                    background: "#f3e8ff",
-                    color: "#7b5ea7",
-                    borderRadius: 20,
-                    padding: "2px 10px",
-                    fontSize: 12,
-                    fontWeight: 700
-                  }}>
-                    🏖 Vacances
-                  </span>
-                )}
+                <span style={{ background: `${memberColor}20`, color: memberColor, borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 700 }}>{book.member}</span>
+                {book.holidayLoan && !book.returned && <span style={{ background: "#f3e8ff", color: "#7b5ea7", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 700 }}>🏖 Vacances</span>}
                 <StatusBadge returnDate={book.returnDate} returned={book.returned} />
               </div>
               <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
-                Emprunté le {formatDate(book.borrowDate)} · À rendre le{" "}
-                <strong style={{ color: "#555" }}>{formatDate(book.returnDate)}</strong>
+                Emprunté le {formatDate(book.borrowDate)} · À rendre le <strong style={{ color: "#555" }}>{formatDate(book.returnDate)}</strong>
               </div>
               {!book.returned && (
                 <button
                   onClick={() => addToCalendar(book)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "6px 12px",
-                    borderRadius: 20,
-                    background: "#f0f7ff",
-                    color: colors.primary,
-                    border: `1.5px solid ${colors.primary}33`,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    marginBottom: 8
-                  }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, background: "#f0f7ff", color: colors.primary, border: `1.5px solid ${colors.primary}33`, fontSize: 12, fontWeight: 700, cursor: "pointer", marginBottom: 8 }}
                   aria-label="Ajouter à l'agenda"
                 >
                   📅 Ajouter à l'agenda
                 </button>
               )}
               {book.rating > 0 && <Stars rating={book.rating} editable={false} />}
-              {book.comment && (
-                <div style={{
-                  marginTop: 8,
-                  fontSize: 13,
-                  color: "#555",
-                  fontStyle: "italic",
-                  background: "#f9f9f9",
-                  borderRadius: 8,
-                  padding: "6px 10px"
-                }}>
-                  "{book.comment}"
-                </div>
-              )}
+              {book.comment && <div style={{ marginTop: 8, fontSize: 13, color: "#555", fontStyle: "italic", background: "#f9f9f9", borderRadius: 8, padding: "6px 10px" }}>"{book.comment}"</div>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-              <button
-                onClick={() => setEditing(true)}
-                style={iconBtn(colors.primary)}
-                aria-label="Modifier le livre"
-              >
-                ✏️
-              </button>
+              <button onClick={() => setEditing(true)} style={iconBtn(colors.primary)} aria-label="Modifier le livre">✏️</button>
               <button
                 onClick={() => {
                   if (confirm(`Supprimer "${book.title}" ?`)) {
@@ -1021,15 +746,9 @@
       const today = new Date().toISOString().split("T")[0];
       const hol = isSchoolHoliday(today);
       const [form, setForm] = useState({
-        title: "",
-        author: "",
-        member: MEMBERS[0],
-        borrowDate: today,
-        returnDate: computeReturnDate(today),
-        rating: 0,
-        comment: "",
-        returned: false,
-        holidayLoan: hol
+        title: "", author: "", member: MEMBERS[0],
+        borrowDate: today, returnDate: computeReturnDate(today),
+        rating: 0, comment: "", returned: false, holidayLoan: hol
       });
 
       const handleSubmit = () => {
@@ -1042,107 +761,43 @@
       };
 
       return (
-        <div style={{
-          background: "#fff",
-          border: `2px solid ${colors.primary}`,
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: "0 8px 32px rgba(74,111,165,0.18)",
-          marginBottom: 24
-        }}>
-          <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>
-            📖 Ajouter un livre
-          </h3>
+        <div style={{ background: "#fff", border: `2px solid ${colors.primary}`, borderRadius: 16, padding: 24, boxShadow: "0 8px 32px rgba(74,111,165,0.18)", marginBottom: 24 }}>
+          <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>📖 Ajouter un livre</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AutocompleteInput
               value={form.title}
               onChange={v => setForm({ ...form, title: v })}
-              onSelectBook={b => setForm({
-                ...form,
-                title: b.title,
-                author: b.author,
-                cover: b.cover,
-                isbn: b.isbn,
-                year: b.year
-              })}
+              onSelectBook={b => setForm({ ...form, title: b.title, author: b.author, cover: b.cover, isbn: b.isbn, year: b.year })}
               placeholder="Titre * (tapez pour chercher)"
             />
-            <input
-              value={form.author}
-              onChange={e => setForm({ ...form, author: e.target.value })}
-              placeholder="Auteur"
-              style={inputStyle}
-              aria-label="Auteur"
-            />
-            <select
-              value={form.member}
-              onChange={e => setForm({ ...form, member: e.target.value })}
-              style={inputStyle}
-              aria-label="Membre"
-            >
+            <input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Auteur" style={inputStyle} aria-label="Auteur" />
+            <select value={form.member} onChange={e => setForm({ ...form, member: e.target.value })} style={inputStyle} aria-label="Membre">
               {MEMBERS.map(m => <option key={m}>{m}</option>)}
             </select>
             <div>
-              <label style={{
-                fontSize: 13,
-                color: "#666",
-                fontWeight: 600,
-                display: "block",
-                marginBottom: 4
-              }}>
-                Date d'emprunt
-              </label>
+              <label style={{ fontSize: 13, color: "#666", fontWeight: 600, display: "block", marginBottom: 4 }}>Date d'emprunt</label>
               <input
                 type="date"
                 value={form.borrowDate}
                 onChange={e => {
                   const bd = e.target.value;
                   const hol = isSchoolHoliday(bd);
-                  setForm({
-                    ...form,
-                    borrowDate: bd,
-                    returnDate: computeReturnDate(bd),
-                    holidayLoan: hol
-                  });
+                  setForm({ ...form, borrowDate: bd, returnDate: computeReturnDate(bd), holidayLoan: hol });
                 }}
                 style={inputStyle}
                 aria-label="Date d'emprunt"
               />
               {form.holidayLoan ? (
-                <div style={{
-                  fontSize: 12,
-                  color: "#7b5ea7",
-                  marginTop: 4,
-                  fontWeight: 600
-                }}>
-                  🏖 Vacances scolaires — délai de 45 jours
-                </div>
+                <div style={{ fontSize: 12, color: "#7b5ea7", marginTop: 4, fontWeight: 600 }}>🏖 Vacances scolaires — délai de 45 jours</div>
               ) : (
-                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
-                  📅 Période normale — délai de 1 mois
-                </div>
+                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>📅 Période normale — délai de 1 mois</div>
               )}
             </div>
-            <div style={{
-              fontSize: 13,
-              color: "#555",
-              background: form.holidayLoan ? "#f3e8ff" : "#f0f4ff",
-              borderRadius: 8,
-              padding: "8px 12px",
-              fontWeight: 600
-            }}>
+            <div style={{ fontSize: 13, color: "#555", background: form.holidayLoan ? "#f3e8ff" : "#f0f4ff", borderRadius: 8, padding: "8px 12px", fontWeight: 600 }}>
               📅 Date de retour : <strong>{formatDate(form.returnDate)}</strong>
             </div>
             <div>
-              <label style={{
-                fontSize: 13,
-                color: "#666",
-                fontWeight: 600,
-                display: "block",
-                marginBottom: 4
-              }}>
-                Note (optionnel)
-              </label>
+              <label style={{ fontSize: 13, color: "#666", fontWeight: 600, display: "block", marginBottom: 4 }}>Note (optionnel)</label>
               <Stars rating={form.rating} onRate={r => setForm({ ...form, rating: r })} />
             </div>
             <textarea
@@ -1165,31 +820,11 @@
     // --- Header ---
     const Header = ({ stats }) => {
       return (
-        <div style={{
-          background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
-          color: "#fff",
-          padding: "32px 20px 20px",
-          textAlign: "center"
-        }}>
+        <div style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)", color: "#fff", padding: "32px 20px 20px", textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 6 }}>📚</div>
-          <h1 style={{
-            margin: 0,
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: 26,
-            fontWeight: 700,
-            letterSpacing: 0.5
-          }}>
-            Ma Médiathèque
-          </h1>
+          <h1 style={{ margin: 0, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 26, fontWeight: 700, letterSpacing: 0.5 }}>Ma Médiathèque</h1>
           <p style={{ margin: "6px 0 0", color: "#aac", fontSize: 14 }}>Jérémy & Marion</p>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 1,
-            background: "#16213e",
-            borderBottom: `3px solid ${colors.primary}`,
-            marginTop: 20
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "#16213e", borderBottom: `3px solid ${colors.primary}`, marginTop: 20 }}>
             {[
               { label: "En cours", value: stats.active, color: colors.primary },
               { label: "Urgents", value: stats.urgent, color: stats.urgent > 0 ? colors.warning : colors.primary },
@@ -1233,11 +868,8 @@
       };
 
       const filteredBooks = books.filter(b => {
-        const matchesSearch =
-          b.title.toLowerCase().includes(search.toLowerCase()) ||
-          b.author.toLowerCase().includes(search.toLowerCase());
+        const matchesSearch = b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase());
         if (!matchesSearch) return false;
-
         if (filter === "jeremy") return b.member === MEMBERS[0];
         if (filter === "marion") return b.member === MEMBERS[1];
         if (filter === "active") return !b.returned;
@@ -1253,15 +885,19 @@
       };
 
       const handleExport = () => {
-        const json = exportBooks();
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `mediatheque_export_${new Date().toISOString().split("T")[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast("Export terminé !", "success");
+        try {
+          const json = exportBooks();
+          const blob = new Blob([json], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `mediatheque_export_${new Date().toISOString().split("T")[0]}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast("Export terminé !", "success");
+        } catch (e) {
+          showToast("Erreur lors de l'export.", "error");
+        }
       };
 
       const handleImport = () => {
@@ -1290,61 +926,15 @@
           <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px 16px 60px" }}>
             {!showForm && (
               <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-                <button
-                  onClick={() => setShowForm(true)}
-                  style={{
-                    ...btnPrimary,
-                    width: "100%",
-                    marginBottom: 12,
-                    boxShadow: "0 4px 16px rgba(74,111,165,0.3)"
-                  }}
-                >
-                  + Ajouter un livre
-                </button>
-                <button
-                  onClick={handleExport}
-                  style={{
-                    ...btnSecondary,
-                    background: `${colors.success}20`,
-                    color: colors.success,
-                    borderColor: `${colors.success}40`,
-                    flex: "none",
-                    width: "auto"
-                  }}
-                >
-                  📥 Exporter
-                </button>
-                <button
-                  onClick={() => setShowImportModal(true)}
-                  style={{
-                    ...btnSecondary,
-                    background: `${colors.primary}20`,
-                    color: colors.primary,
-                    borderColor: `${colors.primary}40`,
-                    flex: "none",
-                    width: "auto"
-                  }}
-                >
-                  📤 Importer
-                </button>
+                <button onClick={() => setShowForm(true)} style={{ ...btnPrimary, width: "100%", marginBottom: 12, boxShadow: "0 4px 16px rgba(74,111,165,0.3)" }}>+ Ajouter un livre</button>
+                <button onClick={handleExport} style={{ ...btnSecondary, background: `${colors.success}20`, color: colors.success, borderColor: `${colors.success}40`, flex: "none", width: "auto" }}>📥 Exporter</button>
+                <button onClick={() => setShowImportModal(true)} style={{ ...btnSecondary, background: `${colors.primary}20`, color: colors.primary, borderColor: `${colors.primary}40`, flex: "none", width: "auto" }}>📤 Importer</button>
               </div>
             )}
             {showForm && <AddBookForm onAdd={addBook} onCancel={() => setShowForm(false)} />}
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="🔍 Rechercher un titre ou auteur..."
-              style={{ ...inputStyle, marginBottom: 12 }}
-              aria-label="Rechercher un livre"
-            />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher un titre ou auteur..." style={{ ...inputStyle, marginBottom: 12 }} aria-label="Rechercher un livre" />
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-              {[
-                { id: "all", label: "Tous" },
-                { id: "active", label: "En cours" },
-                { id: "jeremy", label: "Jérémy" },
-                { id: "marion", label: "Marion" },
-                { id: "returned", label: "Rendus" }
-              ].map(f => (
+              {[{ id: "all", label: "Tous" }, { id: "active", label: "En cours" }, { id: "jeremy", label: "Jérémy" }, { id: "marion", label: "Marion" }, { id: "returned", label: "Rendus" }].map(f => (
                 <button
                   key={f.id}
                   onClick={() => setFilter(f.id)}
@@ -1360,31 +950,20 @@
                     cursor: "pointer"
                   }}
                   aria-pressed={filter === f.id}
-                  aria-label={`Filtrer par ${f.label}`}
                 >
                   {f.label}
                 </button>
               ))}
             </div>
             {filteredBooks.length === 0 ? (
-              <div style={{
-                textAlign: "center",
-                padding: "40px 20px",
-                color: "#bbb",
-                fontSize: 15
-              }}>
+              <div style={{ textAlign: "center", padding: "40px 20px", color: "#bbb", fontSize: 15 }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                 Aucun livre trouvé.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {filteredBooks.map(book => (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    onUpdate={updateBook}
-                    onDelete={deleteBook}
-                  />
+                  <BookCard key={book.id} book={book} onUpdate={updateBook} onDelete={deleteBook} />
                 ))}
               </div>
             )}
@@ -1392,14 +971,7 @@
           {showImportModal && (
             <div className="modal" onClick={() => setShowImportModal(false)}>
               <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <h3 style={{
-                  margin: "0 0 16px",
-                  fontFamily: "'Playfair Display', serif",
-                  color: "#1a1a2e",
-                  fontSize: 18
-                }}>
-                  Importer des livres
-                </h3>
+                <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>Importer des livres</h3>
                 <textarea
                   value={importJson}
                   onChange={e => setImportJson(e.target.value)}
@@ -1420,7 +992,18 @@
     };
 
     // ==================== RENDU ====================
-    ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+    try {
+      ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+    } catch (e) {
+      console.error("Erreur de rendu React:", e);
+      document.getElementById("app").innerHTML = `
+        <div style="text-align: center; padding: 50px; color: #c0392b; font-family: Arial, sans-serif;">
+          <h1>⚠️ Erreur de chargement</h1>
+          <p>Une erreur est survenue : ${e.message}</p>
+          <p>Veuillez rafraîchir la page ou contacter l'administrateur.</p>
+        </div>
+      `;
+    }
   </script>
 </body>
 </html>
