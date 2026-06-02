@@ -57,7 +57,6 @@
   <div id="app"></div>
   <div id="toast-container"></div>
 
-  <!-- Chargement des bibliothèques React -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -185,14 +184,12 @@
     // ==================== API (BnF + Open Library) ====================
     let searchTimeout = null;
 
-    // Liste des proxys CORS pour la BnF
+    // Déclaration propre de votre nouveau proxy Cloudflare personnel
     const CORS_PROXIES = [
-      "https://corsproxy.io/?",
-      "https://thingproxy.freeboard.io/fetch/",
-      "https://api.allorigins.win/get?url="
+      "https://proxy-bnf.batteux-jerem.workers.dev/?url="
     ];
 
-    // Fonction pour essayer les proxys un par un
+    // Fonction pour interroger le proxy
     const fetchWithProxy = async (url) => {
       for (const proxy of CORS_PROXIES) {
         try {
@@ -819,19 +816,11 @@
                   setForm({ ...form, borrowDate: bd, returnDate: computeReturnDate(bd), holidayLoan: hol });
                 }}
                 style={inputStyle}
-                aria-label="Date d'emprunt"
               />
-              {form.holidayLoan ? (
-                <div style={{ fontSize: 12, color: "#7b5ea7", marginTop: 4, fontWeight: 600 }}>🏖 Vacances scolaires — délai de 45 jours</div>
-              ) : (
-                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>📅 Période normale — délai de 1 mois</div>
-              )}
-            </div>
-            <div style={{ fontSize: 13, color: "#555", background: form.holidayLoan ? "#f3e8ff" : "#f0f4ff", borderRadius: 8, padding: "8px 12px", fontWeight: 600 }}>
-              📅 Date de retour : <strong>{formatDate(form.returnDate)}</strong>
+              {form.holidayLoan && <div style={{ fontSize: 12, color: "#7b5ea7", marginTop: 4, fontWeight: 600 }}>🏖 Vacances scolaires — délai de 45 jours</div>}
             </div>
             <div>
-              <label style={{ fontSize: 13, color: "#666", fontWeight: 600, display: "block", marginBottom: 4 }}>Note (optionnel)</label>
+              <label style={{ fontSize: 13, color: "#666", fontWeight: 600, display: "block", marginBottom: 4 }}>Note</label>
               <Stars rating={form.rating} onRate={r => setForm({ ...form, rating: r })} />
             </div>
             <textarea
@@ -840,10 +829,9 @@
               placeholder="Commentaire (optionnel)"
               rows={2}
               style={{ ...inputStyle, resize: "vertical" }}
-              aria-label="Commentaire"
             />
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={handleSubmit} style={btnPrimary}>✅ Ajouter</button>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button onClick={handleSubmit} style={btnPrimary}>➕ Ajouter à la liste</button>
               <button onClick={onCancel} style={btnSecondary}>Annuler</button>
             </div>
           </div>
@@ -851,172 +839,141 @@
       );
     };
 
-    // --- Header ---
-    const Header = ({ stats }) => {
-      return (
-        <div style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)", color: "#fff", padding: "32px 20px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 6 }}>📚</div>
-          <h1 style={{ margin: 0, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 26, fontWeight: 700, letterSpacing: 0.5 }}>Ma Médiathèque</h1>
-          <p style={{ margin: "6px 0 0", color: "#aac", fontSize: 14 }}>Jérémy & Marion</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "#16213e", borderBottom: `3px solid ${colors.primary}`, marginTop: 20 }}>
-            {[
-              { label: "En cours", value: stats.active, color: colors.primary },
-              { label: "Urgents", value: stats.urgent, color: stats.urgent > 0 ? colors.warning : colors.primary },
-              { label: "Jérémy", value: stats.jeremy, color: colors.jeremy },
-              { label: "Marion", value: stats.marion, color: colors.marion }
-            ].map((s, i) => (
-              <div key={i} style={{ background: "#fff", padding: "12px 8px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    };
-
-    // ==================== APP PRINCIPALE ====================
+    // --- Main App ---
     const App = () => {
-      const [books, setBooks] = useState(loadBooks());
+      const [books, setBooks] = useState([]);
       const [showForm, setShowForm] = useState(false);
-      const [filter, setFilter] = useState("all");
-      const [search, setSearch] = useState("");
+      const [filterMember, setFilterMember] = useState("Tous");
+      const [filterStatus, setFilterStatus] = useState("Tous");
       const [showImportModal, setShowImportModal] = useState(false);
-      const [importJson, setImportJson] = useState("");
+      const [importText, setImportText] = useState("");
 
       useEffect(() => {
-        saveBooks(books);
-      }, [books]);
+        setBooks(loadBooks());
+      }, []);
 
-      const addBook = (book) => {
-        setBooks([book, ...books]);
+      const handleAddBook = (newBook) => {
+        const updated = [newBook, ...books];
+        setBooks(updated);
+        saveBooks(updated);
         setShowForm(false);
       };
 
-      const updateBook = (updatedBook) => {
-        setBooks(books.map(b => b.id === updatedBook.id ? updatedBook : b));
+      const handleUpdateBook = (updatedBook) => {
+        const updated = books.map(b => b.id === updatedBook.id ? updatedBook : b);
+        setBooks(updated);
+        saveBooks(updated);
       };
 
-      const deleteBook = (id) => {
-        setBooks(books.filter(b => b.id !== id));
-      };
-
-      const filteredBooks = books.filter(b => {
-        const matchesSearch = b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase());
-        if (!matchesSearch) return false;
-        if (filter === "jeremy") return b.member === MEMBERS[0];
-        if (filter === "marion") return b.member === MEMBERS[1];
-        if (filter === "active") return !b.returned;
-        if (filter === "returned") return b.returned;
-        return true;
-      });
-
-      const stats = {
-        active: books.filter(b => !b.returned).length,
-        urgent: books.filter(b => !b.returned && daysLeft(b.returnDate) <= 5).length,
-        jeremy: books.filter(b => !b.returned && b.member === MEMBERS[0]).length,
-        marion: books.filter(b => !b.returned && b.member === MEMBERS[1]).length,
+      const handleDeleteBook = (id) => {
+        const updated = books.filter(b => b.id !== id);
+        setBooks(updated);
+        saveBooks(updated);
       };
 
       const handleExport = () => {
-        try {
-          const json = exportBooks();
-          const blob = new Blob([json], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `mediatheque_export_${new Date().toISOString().split("T")[0]}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-          showToast("Export terminé !", "success");
-        } catch (e) {
-          showToast("Erreur lors de l'export.", "error");
-        }
+        const dataStr = exportBooks();
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `mediatheque_export_${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Fichier exporté !", "success");
       };
 
       const handleImport = () => {
-        try {
-          const importedBooks = importBooks(importJson);
-          if (importedBooks.length > 0) {
-            importedBooks.forEach(book => {
-              if (!books.some(b => b.id === book.id)) {
-                addBook(book);
-              }
-            });
-            setShowImportModal(false);
-            setImportJson("");
-            showToast(`${importedBooks.length} livre(s) importé(s) !`, "success");
-          } else {
-            showToast("Aucun livre valide trouvé.", "error");
-          }
-        } catch (e) {
-          showToast("Erreur lors de l'import.", "error");
+        const imported = importBooks(importText);
+        if (imported.length > 0) {
+          const merged = [...imported, ...books].filter((b, idx, self) => self.findIndex(t => t.id === b.id) === idx);
+          setBooks(merged);
+          saveBooks(merged);
+          setShowImportModal(false);
+          setImportText("");
+          showToast(`${imported.length} livres importés !`, "success");
+        } else {
+          showToast("Données invalides.", "error");
         }
       };
 
+      const filteredBooks = books.filter(b => {
+        const matchMember = filterMember === "Tous" || b.member === filterMember;
+        let matchStatus = true;
+        if (filterStatus === "En cours") matchStatus = !b.returned;
+        if (filterStatus === "Rendus") matchStatus = b.returned;
+        if (filterStatus === "En retard") matchStatus = !b.returned && daysLeft(b.returnDate) < 0;
+        return matchMember && matchStatus;
+      });
+
       return (
-        <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #f0f4ff 0%, #faf0ff 100%)" }}>
-          <Header stats={stats} />
-          <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px 16px 60px" }}>
-            {!showForm && (
-              <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-                <button onClick={() => setShowForm(true)} style={{ ...btnPrimary, width: "100%", marginBottom: 12, boxShadow: "0 4px 16px rgba(74,111,165,0.3)" }}>+ Ajouter un livre</button>
-                <button onClick={handleExport} style={{ ...btnSecondary, background: `${colors.success}20`, color: colors.success, borderColor: `${colors.success}40`, flex: "none", width: "auto" }}>📥 Exporter</button>
-                <button onClick={() => setShowImportModal(true)} style={{ ...btnSecondary, background: `${colors.primary}20`, color: colors.primary, borderColor: `${colors.primary}40`, flex: "none", width: "auto" }}>📤 Importer</button>
-              </div>
-            )}
-            {showForm && <AddBookForm onAdd={addBook} onCancel={() => setShowForm(false)} />}
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher un titre ou auteur..." style={{ ...inputStyle, marginBottom: 12 }} aria-label="Rechercher un livre" />
-            <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-              {[{ id: "all", label: "Tous" }, { id: "active", label: "En cours" }, { id: "jeremy", label: "Jérémy" }, { id: "marion", label: "Marion" }, { id: "returned", label: "Rendus" }].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 20,
-                    border: "1.5px solid",
-                    borderColor: filter === f.id ? colors.primary : "#ddd",
-                    background: filter === f.id ? colors.primary : "#fff",
-                    color: filter === f.id ? "#fff" : "#555",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer"
-                  }}
-                  aria-pressed={filter === f.id}
-                >
-                  {f.label}
-                </button>
-              ))}
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
+          <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, color: "#1a1a2e" }}>Ma Médiathèque</h1>
+              <p style={{ fontSize: 14, color: "#666", marginTop: 2 }}>Suivi des emprunts de livres</p>
             </div>
-            {filteredBooks.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 20px", color: "#bbb", fontSize: 15 }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-                Aucun livre trouvé.
-              </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={handleExport} style={{ ...btnSecondary, padding: "8px 12px", fontSize: 13 }} title="Exporter les données">📤 Export</button>
+              <button onClick={() => setShowImportModal(true)} style={{ ...btnSecondary, padding: "8px 12px", fontSize: 13 }} title="Importer des données">📥 Import</button>
+            </div>
+          </header>
+
+          {showForm ? (
+            <AddBookForm onAdd={handleAddBook} onCancel={() => setShowForm(false)} />
+          ) : (
+            <button onClick={() => setShowForm(true)} style={{ ...btnPrimary, width: "100%", marginBottom: 24, padding: "14px", fontSize: 16 }}>
+              ➕ Enregistrer un nouvel emprunt
+            </button>
+          )}
+
+          <section style={{ background: "#fff", borderRadius: 16, padding: "16px", boxShadow: "0 4px 16px rgba(0,0,0,0.04)", marginBottom: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ fontSize: 12, color: "#888", fontWeight: 700, display: "block", marginBottom: 4 }}>Lecteur</label>
+              <select value={filterMember} onChange={e => setFilterMember(e.target.value)} style={{ ...inputStyle, padding: "8px 12px", fontSize: 14 }}>
+                <option>Tous</option>
+                {MEMBERS.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ fontSize: 12, color: "#888", fontWeight: 700, display: "block", marginBottom: 4 }}>Statut</label>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...inputStyle, padding: "8px 12px", fontSize: 14 }}>
+                <option>Tous</option>
+                <option>En cours</option>
+                <option>Rendus</option>
+                <option>En retard</option>
+              </select>
+            </div>
+          </section>
+
+          <main style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {filteredBooks.length > 0 ? (
+              filteredBooks.map(book => (
+                <BookCard key={book.id} book={book} onUpdate={handleUpdateBook} onDelete={handleDeleteBook} />
+              ))
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {filteredBooks.map(book => (
-                  <BookCard key={book.id} book={book} onUpdate={updateBook} onDelete={deleteBook} />
-                ))}
+              <div style={{ textAlign: "center", padding: "40px 20px", color: "#888", background: "rgba(255,255,255,0.5)", borderRadius: 16, border: "1.5px dashed #ccc" }}>
+                <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>📚</span>
+                Aucun livre ne correspond aux critères.
               </div>
             )}
-          </div>
+          </main>
+
           {showImportModal && (
-            <div className="modal" onClick={() => setShowImportModal(false)}>
-              <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <h3 style={{ margin: "0 0 16px", fontFamily: "'Playfair Display', serif", color: "#1a1a2e", fontSize: 18 }}>Importer des livres</h3>
+            <div className="modal">
+              <div className="modal-content">
+                <h3 style={{ margin: "0 0 12px", fontFamily: "'Playfair Display', serif" }}>📥 Importer des données</h3>
+                <p style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>Collez ici le contenu texte de votre fichier JSON d'export précédemment téléchargé.</p>
                 <textarea
-                  value={importJson}
-                  onChange={e => setImportJson(e.target.value)}
-                  placeholder='Coller ici le JSON exporté (ex: [{"title": "Livre 1", "author": "Auteur", ...}])'
-                  rows={6}
-                  style={{ ...inputStyle, width: "100%", marginBottom: 12 }}
-                  aria-label="JSON à importer"
+                  value={importText}
+                  onChange={e => setImportText(e.target.value)}
+                  placeholder="[{...}]"
+                  rows={8}
+                  style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12, resize: "none", marginBottom: 16 }}
                 />
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={handleImport} style={btnPrimary}>Importer</button>
-                  <button onClick={() => setShowImportModal(false)} style={btnSecondary}>Annuler</button>
+                  <button onClick={handleImport} style={btnPrimary}>Confirmer l'import</button>
+                  <button onClick={() => { setShowImportModal(false); setImportText(""); }} style={btnSecondary}>Annuler</button>
                 </div>
               </div>
             </div>
@@ -1025,19 +982,8 @@
       );
     };
 
-    // ==================== RENDU ====================
-    try {
-      ReactDOM.createRoot(document.getElementById("app")).render(<App />);
-    } catch (e) {
-      console.error("Erreur de rendu React:", e);
-      document.getElementById("app").innerHTML = `
-        <div style="text-align: center; padding: 50px; color: #c0392b; font-family: Arial, sans-serif;">
-          <h1>⚠️ Erreur de chargement</h1>
-          <p>Une erreur est survenue : ${e.message}</p>
-          <p>Veuillez rafraîchir la page ou contacter l'administrateur.</p>
-        </div>
-      `;
-    }
+    const root = RoyalDOM = ReactDOM.createRoot(document.getElementById("app"));
+    root.render(<App />);
   </script>
 </body>
 </html>
