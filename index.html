@@ -1,171 +1,346 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Médiathèque Jérémy & Marion</title>
-<style>
-body{font-family:system-ui;max-width:900px;margin:auto;padding:20px;background:#f5f7fb}
-h1{text-align:center}
-input,select,button{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px;box-sizing:border-box}
-button{background:#4a6fa5;color:white;cursor:pointer}
-.row{display:flex;gap:8px}
-.row>*{flex:1}
-.card{background:white;padding:12px;border-radius:10px;margin-top:10px}
-.small{font-size:12px;color:#666}
-.badge{padding:2px 8px;border-radius:999px;font-size:11px}
-.j{background:#dbeafe}.m{background:#fce7f3}
-#auto{background:white;border:1px solid #ddd;border-radius:8px;max-height:200px;overflow:auto}
-.item{padding:8px;cursor:pointer}.item:hover{background:#f3f4f6}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Médiathèque</title>
+  <style>
+    body {
+      font-family: system-ui;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      background: #f5f7fb;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    button {
+      background: #4a6fa5;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .row button {
+      flex: 1;
+      font-size: 12px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .j {
+      background: #dbeafe;
+    }
+
+    .m {
+      background: #fce7f3;
+    }
+
+    #auto {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      max-height: 180px;
+      overflow: auto;
+    }
+
+    .item {
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .item:hover {
+      background: #f3f4f6;
+    }
+
+    /* Indicateur de chargement */
+    .loading {
+      padding: 8px;
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top-color: #4a6fa5;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .error {
+      color: #e74c3c;
+    }
+  </style>
 </head>
+
 <body>
-<h1>📚 Médiathèque</h1>
-<div id="stats"></div>
+  <h2>📚 Médiathèque</h2>
+  <div id="stats" class="small"></div>
 
-<input id="title" placeholder="Titre du livre">
-<div id="auto"></div>
-<input id="author" placeholder="Auteur">
+  <input id="title" placeholder="Titre">
+  <div id="auto"></div>
 
-<div class="row">
-<select id="member">
-<option>Jérémy</option>
-<option>Marion</option>
-</select>
-<input type="date" id="date">
-</div>
+  <input id="author" placeholder="Auteur">
 
-<button onclick="addBook()">➕ Ajouter</button>
+  <select id="member">
+    <option>Jérémy</option>
+    <option>Marion</option>
+  </select>
 
-<div class="row">
-<button onclick="setFilter('all')">Tous</button>
-<button onclick="setFilter('Jérémy')">Jérémy</button>
-<button onclick="setFilter('Marion')">Marion</button>
-</div>
+  <input type="date" id="date">
 
-<div id="list"></div>
+  <button onclick="addBook()">➕ Ajouter</button>
 
-<script>
-const WORKER="https://proxy-bnf.batteux-jerem.workers.dev";
-const KEY="mediatheque_v1";
-let books=JSON.parse(localStorage.getItem(KEY)||"[]");
-let filter="all";
-let cache={};
+  <div class="row">
+    <button onclick="setFilter('all')">Tous</button>
+    <button onclick="setFilter('Jérémy')">Jérémy</button>
+    <button onclick="setFilter('Marion')">Marion</button>
+  </div>
 
-const SCHOOL_HOLIDAYS=[
-["2025-07-05","2025-09-01"],
-["2025-10-18","2025-11-03"],
-["2025-12-20","2026-01-05"],
-["2026-02-14","2026-03-02"],
-["2026-04-18","2026-05-04"],
-["2026-07-04","2026-09-01"]
-];
+  <div id="list"></div>
 
-const titleEl=document.getElementById("title");
-const authorEl=document.getElementById("author");
-const memberEl=document.getElementById("member");
-const dateEl=document.getElementById("date");
-const autoEl=document.getElementById("auto");
+  <script>
+    /* ================= CONSTANTES ================= */
+    const WORKER = "https://proxy-bnf.batteux-jerem.workers.dev";
+    const STORAGE_KEY = "books_v1";
+    const MIN_QUERY_LENGTH = 2;
+    const DEBOUNCE_DELAY = 200; // ms
 
-function save(){localStorage.setItem(KEY,JSON.stringify(books));}
+    /* ================= ÉTAT ================= */
+    let books = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let filter = "all";
+    let cache = {};
+    let isLoading = false;
 
-function isHoliday(date){
- const d=new Date(date);
- return SCHOOL_HOLIDAYS.some(([s,e])=>d>=new Date(s)&&d<=new Date(e));
-}
+    /* ================= ÉLÉMENTS DOM ================= */
+    const titleEl = document.getElementById("title");
+    const authorEl = document.getElementById("author");
+    const memberEl = document.getElementById("member");
+    const dateEl = document.getElementById("date");
+    const listEl = document.getElementById("list");
+    const autoEl = document.getElementById("auto");
+    const statsEl = document.getElementById("stats");
 
-function computeReturn(date){
- const d=new Date(date);
- if(isHoliday(date)) d.setDate(d.getDate()+45);
- else d.setMonth(d.getMonth()+1);
- return d.toISOString().split("T")[0];
-}
+    /* ================= FONCTIONS UTILITAIRES ================= */
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+    }
 
-function addBook(){
- if(!titleEl.value||!dateEl.value) return;
- books.unshift({
-  id:Date.now(),
-  title:titleEl.value,
-  author:authorEl.value,
-  member:memberEl.value,
-  borrowDate:dateEl.value,
-  returnDate:computeReturn(dateEl.value)
- });
- save();
- render();
- titleEl.value="";
- authorEl.value="";
- autoEl.innerHTML="";
-}
+    function computeReturn(dateStr) {
+      const date = new Date(dateStr);
+      date.setMonth(date.getMonth() + 1);
+      return date.toISOString().split("T")[0];
+    }
 
-function del(id){
- books=books.filter(b=>b.id!==id);
- save();
- render();
-}
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
-function setFilter(f){filter=f;render();}
+    /* ================= GESTION DES LIVRES ================= */
+    function addBook() {
+      if (!titleEl.value || !dateEl.value) return;
 
-function openGoogleCalendar(book){
- const start=book.borrowDate.replaceAll("-","");
- const endDate=new Date(book.returnDate);
- endDate.setDate(endDate.getDate()+1);
- const end=endDate.toISOString().split("T")[0].replaceAll("-","");
- const url="https://calendar.google.com/calendar/render?action=TEMPLATE"
- +"&text="+encodeURIComponent("📚 "+book.title)
- +"&dates="+start+"/"+end;
- window.open(url,"_blank");
-}
+      const newBook = {
+        id: Date.now(),
+        title: titleEl.value,
+        author: authorEl.value,
+        member: memberEl.value,
+        date: dateEl.value,
+        return: computeReturn(dateEl.value),
+      };
 
-function render(){
- const list=[...books]
- .filter(b=>filter==="all"||b.member===filter)
- .sort((a,b)=>new Date(a.returnDate)-new Date(b.returnDate));
+      books.unshift(newBook);
+      save();
+      render();
+      resetForm();
+    }
 
- document.getElementById("stats").innerText="📚 "+books.length+" livres";
+    function del(id) {
+      if (confirm("Voulez-vous vraiment supprimer ce livre ?")) {
+        books = books.filter((b) => b.id !== id);
+        save();
+        render();
+      }
+    }
 
- document.getElementById("list").innerHTML=list.map(b=>`
- <div class="card">
- <b>${b.title}</b><br>
- <span class="small">${b.author||""}</span><br>
- <span class="badge ${b.member==="Jérémy"?"j":"m"}">${b.member}</span>
- <div class="small">📅 ${b.returnDate} ${isHoliday(b.borrowDate)?"🏖 45 jours":"📘 1 mois"}</div>
- <div class="row">
- <button onclick="openGoogleCalendar(books.find(x=>x.id===${b.id}))">Google Calendar</button>
- <button onclick="del(${b.id})" style="background:#e74c3c">Supprimer</button>
- </div>
- </div>`).join("");
-}
+    /* ================= FILTRES ================= */
+    function setFilter(f) {
+      filter = f;
+      render();
+    }
 
-let timer;
-titleEl.addEventListener("input",()=>{
- clearTimeout(timer);
- timer=setTimeout(async()=>{
-  const q=titleEl.value.trim();
-  if(q.length<2)return;
-  try{
-   if(cache[q]) return draw(cache[q]);
-   const r=await fetch(WORKER+"?q="+encodeURIComponent(q));
-   const data=await r.json();
-   cache[q]=data;
-   draw(data);
-  }catch(e){}
- },250);
-});
+    /* ================= AFFICHAGE ================= */
+    function render() {
+      const filteredBooks = filter === "all"
+        ? books
+        : books.filter((b) => b.member === filter);
 
-function draw(data){
- autoEl.innerHTML=(data||[]).slice(0,8).map(b=>
- `<div class="item" onclick="pick('${(b.title||"").replace(/'/g,"&#39;")}','${(b.author||"").replace(/'/g,"&#39;")}')">📖 ${b.title}</div>`
- ).join("");
-}
+      const sortedBooks = [...filteredBooks].sort(
+        (a, b) => new Date(a.return) - new Date(b.return)
+      );
 
-function pick(t,a){
- titleEl.value=t;
- authorEl.value=a;
- autoEl.innerHTML="";
-}
+      if (sortedBooks.length === 0) {
+        listEl.innerHTML = '<div class="card small">Aucun livre trouvé.</div>';
+      } else {
+        listEl.innerHTML = sortedBooks
+          .map((book) => {
+            const gcalUrl =
+              "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+              `&text=${encodeURIComponent("📚 " + book.title)}` +
+              `&dates=${book.return.replaceAll("-", "")}/${book.return.replaceAll("-", "")}`;
 
-render();
-</script>
+            return `
+              <div class="card">
+                <b>${escapeHtml(book.title)}</b><br>
+                <span class="small">${escapeHtml(book.author || "")}</span><br>
+                <span class="badge ${book.member === "Jérémy" ? "j" : "m"}">
+                  ${escapeHtml(book.member)}
+                </span>
+                <div class="small">📅 ${book.return}</div>
+                <div class="row">
+                  <button onclick="window.open('${gcalUrl}', '_blank')">
+                    Google Calendar
+                  </button>
+                  <button onclick="del(${book.id})" style="background:#e74c3c">
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      statsEl.textContent = `📚 ${books.length} livres`;
+    }
+
+    function resetForm() {
+      titleEl.value = "";
+      authorEl.value = "";
+      autoEl.innerHTML = "";
+    }
+
+    /* ================= AUTOCOMPLÉTION ================= */
+    let debounceTimer;
+
+    titleEl.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      const query = titleEl.value.trim();
+
+      if (query.length < MIN_QUERY_LENGTH) {
+        autoEl.innerHTML = "";
+        return;
+      }
+
+      // Afficher l'indicateur de chargement
+      if (!isLoading) {
+        isLoading = true;
+        autoEl.innerHTML = `
+          <div class="item loading">
+            <span class="spinner"></span>
+            Recherche en cours...
+          </div>
+        `;
+      }
+
+      debounceTimer = setTimeout(async () => {
+        if (cache[query]) {
+          drawAutocomplete(cache[query]);
+          isLoading = false;
+          return;
+        }
+
+        try {
+          const response = await fetch(`${WORKER}?q=${encodeURIComponent(query)}`);
+          if (!response.ok) throw new Error("Erreur réseau");
+          const data = await response.json();
+          cache[query] = data;
+          drawAutocomplete(data);
+        } catch (error) {
+          autoEl.innerHTML = `
+            <div class="item loading error">
+              ⚠️ Erreur de connexion
+            </div>
+          `;
+        } finally {
+          isLoading = false;
+        }
+      }, DEBOUNCE_DELAY);
+    });
+
+    function drawAutocomplete(data) {
+      if (!data || data.length === 0) {
+        autoEl.innerHTML = '<div class="item small">Aucun résultat trouvé.</div>';
+        return;
+      }
+
+      autoEl.innerHTML = data
+        .slice(0, 8)
+        .map(
+          (book) => `
+            <div class="item" onclick="pick('${escapeHtml(book.title)}', '${escapeHtml(book.author || "")}')">
+              📖 ${escapeHtml(book.title)}
+            </div>
+          `
+        )
+        .join("");
+    }
+
+    function pick(title, author) {
+      titleEl.value = title;
+      authorEl.value = author;
+      autoEl.innerHTML = "";
+    }
+
+    /* ================= INITIALISATION ================= */
+    render();
+  </script>
 </body>
 </html>
