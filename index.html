@@ -6,84 +6,83 @@
 <title>Médiathèque Pro</title>
 
 <style>
-body {
+body{
   font-family: system-ui;
-  background: #f5f7fb;
-  max-width: 700px;
-  margin: auto;
-  padding: 20px;
+  background:#f5f7fb;
+  max-width:750px;
+  margin:auto;
+  padding:20px;
 }
 
-h2 { text-align:center; }
+h2{text-align:center;}
 
-input, select {
-  width: 100%;
-  padding: 10px;
-  margin: 6px 0;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+input,select{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border:1px solid #ddd;
+  border-radius:8px;
 }
 
-button {
-  width: 100%;
-  padding: 10px;
-  background: #4a6fa5;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  margin-top: 6px;
-  cursor: pointer;
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#4a6fa5;
+  color:white;
+  cursor:pointer;
+  margin-top:6px;
 }
 
-.filters {
-  display: flex;
-  gap: 6px;
-  margin: 10px 0;
+.filters{
+  display:flex;
+  gap:6px;
+  margin:10px 0;
 }
 
-.filters button {
-  flex: 1;
-  background: #e5e7eb;
-  color: black;
+.filters button{
+  flex:1;
+  background:#e5e7eb;
+  color:#111;
 }
 
-.filters button.active {
-  background: #4a6fa5;
-  color: white;
+.filters button.active{
+  background:#4a6fa5;
+  color:white;
 }
 
-.card {
-  background: white;
-  padding: 12px;
-  border-radius: 10px;
-  margin-top: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+.card{
+  background:white;
+  padding:12px;
+  border-radius:10px;
+  margin-top:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
 }
 
-.badge {
-  display:inline-block;
+.badge{
   font-size:11px;
   padding:2px 8px;
   border-radius:999px;
 }
 
-.jeremy { background:#dbeafe; }
-.marion { background:#fce7f3; }
+.jeremy{background:#dbeafe;}
+.marion{background:#fce7f3;}
 
-.auto {
+.auto{
   background:white;
   border:1px solid #ddd;
   border-radius:8px;
-  max-height:150px;
+  max-height:160px;
   overflow:auto;
 }
 
-.item {
+.item{
   padding:8px;
   cursor:pointer;
 }
 
-.item:hover {
+.item:hover{
   background:#f3f4f6;
 }
 </style>
@@ -91,9 +90,9 @@ button {
 
 <body>
 
-<h2>📚 Médiathèque Pro</h2>
+<h2>📚 Médiathèque Jérémy / Marion</h2>
 
-<input id="title" placeholder="Titre">
+<input id="title" placeholder="Titre du livre">
 <div id="auto" class="auto"></div>
 
 <input id="author" placeholder="Auteur">
@@ -116,39 +115,46 @@ button {
 <div id="list"></div>
 
 <script>
+
+/* ===================== CONFIG ===================== */
 const WORKER = "https://ton-worker.workers.dev/";
+const STORAGE_KEY = "mediatheque_cloud_v1";
+
 let books = [];
 let filter = "all";
 
-/* ☁️ LOAD */
+/* ===================== CLOUD ===================== */
 async function loadBooks(){
-  const r = await fetch(WORKER);
-  books = await r.json();
+  try{
+    const r = await fetch(WORKER);
+    books = await r.json();
+  }catch(e){
+    books = [];
+  }
   render();
 }
 
-/* ☁️ SAVE */
 async function save(){
-  await fetch(WORKER, {
+  await fetch(WORKER,{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify(books)
   });
 }
 
-/* 📅 DATE */
+/* ===================== DATE ===================== */
 function computeReturn(date){
   let d = new Date(date);
   d.setMonth(d.getMonth()+1);
   return d.toISOString().split("T")[0];
 }
 
-/* ➕ ADD */
+/* ===================== ADD ===================== */
 function addBook(){
-  const title = titleEl.value.trim();
-  const author = authorEl.value.trim();
-  const member = memberEl.value;
-  const date = dateEl.value;
+  const title = document.getElementById("title").value.trim();
+  const author = document.getElementById("author").value.trim();
+  const member = document.getElementById("member").value;
+  const date = document.getElementById("date").value;
 
   if(!title || !date) return;
 
@@ -163,75 +169,91 @@ function addBook(){
   save();
   render();
 
-  titleEl.value = "";
-  authorEl.value = "";
+  document.getElementById("title").value="";
+  document.getElementById("author").value="";
 }
 
-/* 🎯 FILTER */
+/* ===================== FILTER ===================== */
 function setFilter(f){
   filter = f;
+
   document.querySelectorAll(".filters button")
-    .forEach(b => b.classList.remove("active"));
+    .forEach(b=>b.classList.remove("active"));
+
   event.target.classList.add("active");
   render();
 }
 
-/* 📚 RENDER */
+/* ===================== RENDER ===================== */
 function render(){
   const list = books
-    .filter(b => filter==="all"?true:b.member===filter)
+    .filter(b => filter==="all" ? true : b.member===filter)
     .sort((a,b)=> new Date(a.returnDate)-new Date(b.returnDate));
 
-  document.getElementById("list").innerHTML = list.map(b => `
-    <div class="card">
-      <b>${b.title}</b><br>
-      ${b.author || ""}<br>
+  document.getElementById("list").innerHTML = list.map(b=>{
 
-      <span class="badge ${b.member==="Jérémy"?"jeremy":"marion"}">
-        ${b.member}
-      </span>
+    const gcal =
+      "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+      "&text=" + encodeURIComponent("📚 Rendre : " + b.title) +
+      "&dates=" + b.returnDate.replaceAll("-","") + "/" + b.returnDate.replaceAll("-","") +
+      "&details=" + encodeURIComponent(b.author||"");
 
-      <div>📅 ${b.returnDate}</div>
-    </div>
-  `).join("");
+    return `
+      <div class="card">
+        <b>${b.title}</b><br>
+        ${b.author||""}<br>
+
+        <span class="badge ${b.member==="Jérémy"?"jeremy":"marion"}">
+          ${b.member}
+        </span>
+
+        <div>📅 ${b.returnDate}</div>
+
+        <button onclick="window.open('${gcal}','_blank')" style="margin-top:8px;background:#34a853">
+          📅 Google Calendar
+        </button>
+      </div>
+    `;
+  }).join("");
 }
 
-/* 🔎 AUTOCOMPLETE (simple mock) */
-async function search(q){
-  if(q.length<2) return [];
-  const r = await fetch(WORKER+"?q="+q);
-  return await r.json();
-}
-
+/* ===================== AUTOCOMPLETE ===================== */
 let timer;
 
-titleEl.oninput = () => {
-  clearTimeout(timer);
-  timer = setTimeout(async () => {
-    const data = await search(titleEl.value);
-
-    auto.innerHTML = (data||[]).slice(0,5).map(b => `
-      <div class="item" onclick="pick('${b.title}','${b.author||""}')">
-        📖 ${b.title}
-      </div>
-    `).join("");
-  }, 200);
-};
-
-function pick(t,a){
-  titleEl.value=t;
-  authorEl.value=a;
-  auto.innerHTML="";
+async function search(q){
+  if(q.length<2) return [];
+  try{
+    const r = await fetch(WORKER+"?q="+encodeURIComponent(q));
+    return await r.json();
+  }catch{
+    return [];
+  }
 }
 
-/* INIT */
-const titleEl = document.getElementById("title");
-const authorEl = document.getElementById("author");
-const memberEl = document.getElementById("member");
-const dateEl = document.getElementById("date");
-const auto = document.getElementById("auto");
+document.getElementById("title").addEventListener("input", e=>{
+  clearTimeout(timer);
 
+  timer=setTimeout(async()=>{
+    const data = await search(e.target.value);
+
+    document.getElementById("auto").innerHTML =
+      (data||[]).slice(0,5).map(b=>`
+        <div class="item" onclick="pick('${b.title}','${b.author||""}')">
+          📖 ${b.title}
+        </div>
+      `).join("");
+  },200);
+});
+
+function pick(t,a){
+  document.getElementById("title").value=t;
+  document.getElementById("author").value=a;
+  document.getElementById("auto").innerHTML="";
+}
+
+/* ===================== INIT ===================== */
 loadBooks();
+
 </script>
 
 </body>
