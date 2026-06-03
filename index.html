@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Médiathèque Pro Cloudflare</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Médiathèque Pro</title>
 
 <style>
 body{
@@ -108,12 +108,12 @@ button{
 
 <input type="date" id="date">
 
-<button onclick="addBook()">➕ Ajouter</button>
+<button id="addBtn">➕ Ajouter</button>
 
 <div class="filters">
-  <button onclick="setFilter('all')" class="active">Tous</button>
-  <button onclick="setFilter('Jérémy')">Jérémy</button>
-  <button onclick="setFilter('Marion')">Marion</button>
+  <button data-filter="all" class="active">Tous</button>
+  <button data-filter="Jérémy">Jérémy</button>
+  <button data-filter="Marion">Marion</button>
 </div>
 
 <div id="list"></div>
@@ -122,16 +122,26 @@ button{
 
 /* ================= CONFIG ================= */
 const WORKER = "https://proxy-bnf.batteux-jerem.workers.dev";
-const KEY = "mediatheque_cloudflare_v1";
+const STORAGE_KEY = "mediatheque_final_v1";
+
+/* ================= DOM ================= */
+const titleEl = document.getElementById("title");
+const authorEl = document.getElementById("author");
+const memberEl = document.getElementById("member");
+const dateEl = document.getElementById("date");
+const autoEl = document.getElementById("auto");
+const listEl = document.getElementById("list");
+const statsEl = document.getElementById("stats");
+const addBtn = document.getElementById("addBtn");
 
 /* ================= STATE ================= */
-let books = JSON.parse(localStorage.getItem(KEY)) || [];
+let books = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 let filter = "all";
 let cache = new Map();
 
 /* ================= SAVE ================= */
 const save = () =>
-  localStorage.setItem(KEY, JSON.stringify(books));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
 
 /* ================= DATE ================= */
 const computeReturn = (d) => {
@@ -142,12 +152,11 @@ const computeReturn = (d) => {
 
 /* ================= ADD ================= */
 function addBook(){
-  const title = titleEl.value.trim();
-  if(!title || !dateEl.value) return;
+  if(!titleEl.value || !dateEl.value) return;
 
   books.unshift({
     id: Date.now(),
-    title,
+    title: titleEl.value.trim(),
     author: authorEl.value.trim(),
     member: memberEl.value,
     borrowDate: dateEl.value,
@@ -162,31 +171,36 @@ function addBook(){
 }
 
 /* ================= FILTER ================= */
-function setFilter(f){
-  filter = f;
-  document.querySelectorAll(".filters button")
-    .forEach(b => b.classList.remove("active"));
-  event.target.classList.add("active");
-  render();
-}
+document.querySelectorAll(".filters button").forEach(btn=>{
+  btn.addEventListener("click", (e)=>{
+    filter = btn.dataset.filter;
+
+    document.querySelectorAll(".filters button")
+      .forEach(b=>b.classList.remove("active"));
+
+    btn.classList.add("active");
+
+    render();
+  });
+});
 
 /* ================= STATS ================= */
 function updateStats(){
-  stats.innerText =
+  statsEl.innerText =
     `📚 ${books.length} livres • 👤 Jérémy: ${books.filter(b=>b.member==="Jérémy").length} • Marion: ${books.filter(b=>b.member==="Marion").length}`;
 }
 
-/* ================= RENDER OPTIMISÉ ================= */
+/* ================= RENDER OPTIMIZED ================= */
 function render(){
-  const list = books
+  const filtered = books
     .filter(b => filter === "all" ? true : b.member === filter)
-    .sort((a,b) => new Date(a.returnDate) - new Date(b.returnDate));
+    .sort((a,b)=> new Date(a.returnDate) - new Date(b.returnDate));
 
   listEl.textContent = "";
 
   const frag = document.createDocumentFragment();
 
-  for(const b of list){
+  for(const b of filtered){
     const div = document.createElement("div");
     div.className = "card";
 
@@ -218,8 +232,8 @@ function render(){
   updateStats();
 }
 
-/* ================= AUTOCOMPLETE VIA CLOUDFARE ================= */
-let t;
+/* ================= AUTOCOMPLETE ================= */
+let timer;
 
 async function search(q){
   if(q.length < 2) return [];
@@ -238,38 +252,32 @@ async function search(q){
   }
 }
 
-/* ================= AUTOCOMPLETE UI ================= */
-titleEl.oninput = () => {
-  clearTimeout(t);
+/* debounce clean */
+titleEl.addEventListener("input", ()=>{
+  clearTimeout(timer);
 
-  t = setTimeout(async () => {
+  timer = setTimeout(async ()=>{
     const data = await search(titleEl.value);
 
-    auto.innerHTML = (data || [])
+    autoEl.innerHTML = (data || [])
       .slice(0,6)
-      .map(b => `
+      .map(b=>`
         <div class="item" onclick="pick('${b.title}','${b.author || ""}')">
           📖 ${b.title}
         </div>
       `).join("");
 
   }, 200);
-};
+});
 
 function pick(t,a){
   titleEl.value = t;
   authorEl.value = a;
-  auto.innerHTML = "";
+  autoEl.innerHTML = "";
 }
 
 /* ================= INIT ================= */
-const titleEl = document.getElementById("title");
-const authorEl = document.getElementById("author");
-const memberEl = document.getElementById("member");
-const dateEl = document.getElementById("date");
-const auto = document.getElementById("auto");
-const listEl = document.getElementById("list");
-const stats = document.getElementById("stats");
+addBtn.addEventListener("click", addBook);
 
 render();
 
