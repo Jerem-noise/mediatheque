@@ -325,7 +325,7 @@
         .slice(0, 8)
         .map(
           (book) => `
-            <div class="item" onclick="pick('${escapeHtml(book.title)}', '${escapeHtml(book.author || "")}')">
+            <div class="item" onclick="pick('${escapeHtml(book.title).replace(/'/g, "\\'")}', '${escapeHtml(book.author || "").replace(/'/g, "\\'")}')">
               📖 ${escapeHtml(book.title)}
             </div>
           `
