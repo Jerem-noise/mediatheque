@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Médiathèque Pro V2</title>
+<title>Médiathèque Pro Cloudflare</title>
 
 <style>
 body{
@@ -14,7 +14,7 @@ body{
   padding:20px;
 }
 
-h2{text-align:center;}
+h2{text-align:center}
 
 input,select{
   width:100%;
@@ -73,7 +73,7 @@ button{
   background:#fff;
   border:1px solid #ddd;
   border-radius:8px;
-  max-height:180px;
+  max-height:200px;
   overflow:auto;
 }
 
@@ -92,7 +92,7 @@ button{
 
 <body>
 
-<h2>📚 Médiathèque Pro V2</h2>
+<h2>📚 Médiathèque Pro</h2>
 
 <div class="small" id="stats"></div>
 
@@ -120,174 +120,156 @@ button{
 
 <script>
 
-/* ===================== STATE ===================== */
-const KEY="mediatheque_v2";
-let books=JSON.parse(localStorage.getItem(KEY))||[];
-let filter="all";
-let cache={};
+/* ================= CONFIG ================= */
+const WORKER = "https://proxy-bnf.batteux-jerem.workers.dev";
+const KEY = "mediatheque_cloudflare_v1";
 
-/* ===================== SAVE ===================== */
-function save(){
-  localStorage.setItem(KEY,JSON.stringify(books));
-}
+/* ================= STATE ================= */
+let books = JSON.parse(localStorage.getItem(KEY)) || [];
+let filter = "all";
+let cache = new Map();
 
-/* ===================== DATE ===================== */
-function computeReturn(d){
-  let x=new Date(d);
-  x.setMonth(x.getMonth()+1);
+/* ================= SAVE ================= */
+const save = () =>
+  localStorage.setItem(KEY, JSON.stringify(books));
+
+/* ================= DATE ================= */
+const computeReturn = (d) => {
+  let x = new Date(d);
+  x.setMonth(x.getMonth() + 1);
   return x.toISOString().split("T")[0];
-}
+};
 
-/* ===================== ADD ===================== */
+/* ================= ADD ================= */
 function addBook(){
-  const title=titleEl.value.trim();
-  const author=authorEl.value.trim();
-  const member=memberEl.value;
-  const date=dateEl.value;
-
-  if(!title||!date)return;
+  const title = titleEl.value.trim();
+  if(!title || !dateEl.value) return;
 
   books.unshift({
-    id:Date.now(),
+    id: Date.now(),
     title,
-    author,
-    member,
-    borrowDate:date,
-    returnDate:computeReturn(date)
+    author: authorEl.value.trim(),
+    member: memberEl.value,
+    borrowDate: dateEl.value,
+    returnDate: computeReturn(dateEl.value)
   });
 
   save();
   render();
 
-  titleEl.value="";
-  authorEl.value="";
+  titleEl.value = "";
+  authorEl.value = "";
 }
 
-/* ===================== FILTER ===================== */
+/* ================= FILTER ================= */
 function setFilter(f){
-  filter=f;
+  filter = f;
   document.querySelectorAll(".filters button")
-    .forEach(b=>b.classList.remove("active"));
+    .forEach(b => b.classList.remove("active"));
   event.target.classList.add("active");
   render();
 }
 
-/* ===================== STATS ===================== */
+/* ================= STATS ================= */
 function updateStats(){
-  const active=books.filter(b=>b.member);
-  document.getElementById("stats").innerText=
+  stats.innerText =
     `📚 ${books.length} livres • 👤 Jérémy: ${books.filter(b=>b.member==="Jérémy").length} • Marion: ${books.filter(b=>b.member==="Marion").length}`;
 }
 
-/* ===================== RENDER (OPTIMISÉ) ===================== */
+/* ================= RENDER OPTIMISÉ ================= */
 function render(){
-  const list=books
-    .filter(b=>filter==="all"?true:b.member===filter)
-    .sort((a,b)=>new Date(a.returnDate)-new Date(b.returnDate));
+  const list = books
+    .filter(b => filter === "all" ? true : b.member === filter)
+    .sort((a,b) => new Date(a.returnDate) - new Date(b.returnDate));
 
-  let html="";
-  for(let b of list){
-    const gcal=
-      "https://calendar.google.com/calendar/render?action=TEMPLATE"+
-      "&text="+encodeURIComponent("📚 "+b.title)+
-      "&dates="+b.returnDate.replaceAll("-","")+"/"+b.returnDate.replaceAll("-","");
+  listEl.textContent = "";
 
-    html+=`
-      <div class="card">
-        <b>${b.title}</b><br>
-        <span class="small">${b.author||""}</span><br>
+  const frag = document.createDocumentFragment();
 
-        <span class="badge ${b.member==="Jérémy"?"jeremy":"marion"}">
-          ${b.member}
-        </span>
+  for(const b of list){
+    const div = document.createElement("div");
+    div.className = "card";
 
-        <div class="small">📅 ${b.returnDate}</div>
+    const gcal =
+      "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+      "&text=" + encodeURIComponent("📚 " + b.title) +
+      "&dates=" + b.returnDate.replaceAll("-","") + "/" + b.returnDate.replaceAll("-","");
 
-        <button onclick="window.open('${gcal}','_blank')" style="margin-top:8px;background:#34a853">
-          📅 Google Calendar
-        </button>
-      </div>
+    div.innerHTML = `
+      <b>${b.title}</b><br>
+      <span class="small">${b.author || ""}</span><br>
+
+      <span class="badge ${b.member==="Jérémy"?"jeremy":"marion"}">
+        ${b.member}
+      </span>
+
+      <div class="small">📅 ${b.returnDate}</div>
+
+      <button style="margin-top:8px;background:#34a853"
+        onclick="window.open('${gcal}','_blank')">
+        📅 Google Calendar
+      </button>
     `;
+
+    frag.appendChild(div);
   }
 
-  document.getElementById("list").innerHTML=
-    html||"<div class='small'>Aucun livre</div>";
-
+  listEl.appendChild(frag);
   updateStats();
 }
 
-/* ===================== AUTOCOMPLETE MULTI API ===================== */
+/* ================= AUTOCOMPLETE VIA CLOUDFARE ================= */
+let t;
+
 async function search(q){
-  if(q.length<2)return[];
+  if(q.length < 2) return [];
 
-  if(cache[q])return cache[q];
+  if(cache.has(q)) return cache.get(q);
 
-  const urls=[
-    `https://openlibrary.org/search.json?q=${q}&limit=3`,
-    `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=3`
-  ];
+  try {
+    const res = await fetch(`${WORKER}?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
 
-  try{
-    const [ol,gb]=await Promise.all(urls.map(u=>fetch(u).catch(()=>null)));
+    cache.set(q, data);
+    return data;
 
-    let res=[];
-
-    if(ol&&ol.ok){
-      const d=await ol.json();
-      (d.docs||[]).forEach(b=>{
-        res.push({title:b.title,author:(b.author_name||[]).join(", ")});
-      });
-    }
-
-    if(gb&&gb.ok){
-      const d=await gb.json();
-      (d.items||[]).forEach(b=>{
-        res.push({
-          title:b.volumeInfo.title,
-          author:(b.volumeInfo.authors||[]).join(", ")
-        });
-      });
-    }
-
-    cache[q]=res;
-    return res;
-
-  }catch{
-    return[];
+  } catch {
+    return [];
   }
 }
 
-/* ===================== AUTOCOMPLETE UI ===================== */
-let timer;
+/* ================= AUTOCOMPLETE UI ================= */
+titleEl.oninput = () => {
+  clearTimeout(t);
 
-titleEl.oninput=()=>{
-  clearTimeout(timer);
+  t = setTimeout(async () => {
+    const data = await search(titleEl.value);
 
-  timer=setTimeout(async()=>{
-    const data=await search(titleEl.value);
-
-    auto.innerHTML=(data||[])
+    auto.innerHTML = (data || [])
       .slice(0,6)
-      .map(b=>`
-        <div class="item" onclick="pick('${escape(b.title)}','${escape(b.author||"")}')">
+      .map(b => `
+        <div class="item" onclick="pick('${b.title}','${b.author || ""}')">
           📖 ${b.title}
         </div>
       `).join("");
-  },200);
+
+  }, 200);
 };
 
 function pick(t,a){
-  titleEl.value=t;
-  authorEl.value=a;
-  auto.innerHTML="";
+  titleEl.value = t;
+  authorEl.value = a;
+  auto.innerHTML = "";
 }
 
-/* ===================== INIT ===================== */
-const titleEl=document.getElementById("title");
-const authorEl=document.getElementById("author");
-const memberEl=document.getElementById("member");
-const dateEl=document.getElementById("date");
-const auto=document.getElementById("auto");
+/* ================= INIT ================= */
+const titleEl = document.getElementById("title");
+const authorEl = document.getElementById("author");
+const memberEl = document.getElementById("member");
+const dateEl = document.getElementById("date");
+const auto = document.getElementById("auto");
+const listEl = document.getElementById("list");
+const stats = document.getElementById("stats");
 
 render();
 
