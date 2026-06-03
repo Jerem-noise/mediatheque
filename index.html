@@ -1,64 +1,54 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Médiathèque Pro</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Médiathèque</title>
 
 <style>
 body{
   font-family:system-ui;
-  background:#f5f7fb;
   max-width:800px;
   margin:auto;
   padding:20px;
+  background:#f5f7fb;
 }
 
 h2{text-align:center}
 
-input,select{
+input,select,button{
   width:100%;
   padding:10px;
   margin:6px 0;
-  border:1px solid #ddd;
   border-radius:8px;
+  border:1px solid #ddd;
 }
 
 button{
-  width:100%;
-  padding:10px;
-  border:none;
-  border-radius:8px;
   background:#4a6fa5;
   color:#fff;
+  border:none;
   cursor:pointer;
-  margin-top:6px;
 }
 
-.filters{
+.row{
   display:flex;
   gap:6px;
-  margin:10px 0;
 }
 
-.filters button{
+.row button{
   flex:1;
-  background:#e5e7eb;
-  color:#111;
-}
-
-.filters button.active{
-  background:#4a6fa5;
-  color:#fff;
+  font-size:12px;
 }
 
 .card{
   background:#fff;
-  padding:12px;
+  padding:10px;
   margin-top:10px;
   border-radius:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.05);
 }
+
+.small{font-size:12px;color:#666}
 
 .badge{
   font-size:11px;
@@ -66,14 +56,14 @@ button{
   border-radius:999px;
 }
 
-.jeremy{background:#dbeafe;}
-.marion{background:#fce7f3;}
+.j{background:#dbeafe}
+.m{background:#fce7f3}
 
-.auto{
+#auto{
   background:#fff;
   border:1px solid #ddd;
   border-radius:8px;
-  max-height:200px;
+  max-height:180px;
   overflow:auto;
 }
 
@@ -81,23 +71,18 @@ button{
   padding:8px;
   cursor:pointer;
 }
-.item:hover{background:#f3f4f6;}
-
-.small{
-  font-size:12px;
-  color:#666;
-}
+.item:hover{background:#f3f4f6}
 </style>
 </head>
 
 <body>
 
-<h2>📚 Médiathèque Pro</h2>
+<h2>📚 Médiathèque</h2>
 
-<div class="small" id="stats"></div>
+<div id="stats" class="small"></div>
 
-<input id="title" placeholder="Titre du livre">
-<div id="auto" class="auto"></div>
+<input id="title" placeholder="Titre">
+<div id="auto"></div>
 
 <input id="author" placeholder="Auteur">
 
@@ -108,47 +93,43 @@ button{
 
 <input type="date" id="date">
 
-<button id="addBtn">➕ Ajouter</button>
+<button onclick="addBook()">➕ Ajouter</button>
 
-<div class="filters">
-  <button data-filter="all" class="active">Tous</button>
-  <button data-filter="Jérémy">Jérémy</button>
-  <button data-filter="Marion">Marion</button>
+<div class="row">
+  <button onclick="setFilter('all')">Tous</button>
+  <button onclick="setFilter('Jérémy')">Jérémy</button>
+  <button onclick="setFilter('Marion')">Marion</button>
 </div>
 
 <div id="list"></div>
 
 <script>
 
-/* ================= CONFIG ================= */
+/* ================= STATE ================= */
 const WORKER = "https://proxy-bnf.batteux-jerem.workers.dev";
-const STORAGE_KEY = "mediatheque_final_v1";
+let books = JSON.parse(localStorage.getItem("books_v1") || "[]");
+let filter = "all";
+let cache = {};
 
 /* ================= DOM ================= */
 const titleEl = document.getElementById("title");
 const authorEl = document.getElementById("author");
 const memberEl = document.getElementById("member");
 const dateEl = document.getElementById("date");
-const autoEl = document.getElementById("auto");
 const listEl = document.getElementById("list");
-const statsEl = document.getElementById("stats");
-const addBtn = document.getElementById("addBtn");
-
-/* ================= STATE ================= */
-let books = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-let filter = "all";
-let cache = new Map();
+const autoEl = document.getElementById("auto");
 
 /* ================= SAVE ================= */
-const save = () =>
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+function save(){
+  localStorage.setItem("books_v1", JSON.stringify(books));
+}
 
 /* ================= DATE ================= */
-const computeReturn = (d) => {
-  let x = new Date(d);
-  x.setMonth(x.getMonth() + 1);
+function computeReturn(d){
+  const x = new Date(d);
+  x.setMonth(x.getMonth()+1);
   return x.toISOString().split("T")[0];
-};
+}
 
 /* ================= ADD ================= */
 function addBook(){
@@ -156,129 +137,125 @@ function addBook(){
 
   books.unshift({
     id: Date.now(),
-    title: titleEl.value.trim(),
-    author: authorEl.value.trim(),
+    title: titleEl.value,
+    author: authorEl.value,
     member: memberEl.value,
-    borrowDate: dateEl.value,
-    returnDate: computeReturn(dateEl.value)
+    date: dateEl.value,
+    return: computeReturn(dateEl.value)
   });
 
   save();
   render();
 
-  titleEl.value = "";
-  authorEl.value = "";
+  titleEl.value="";
+  authorEl.value="";
+  autoEl.innerHTML="";
+}
+
+/* ================= DELETE ================= */
+function del(id){
+  books = books.filter(b=>b.id!==id);
+  save();
+  render();
 }
 
 /* ================= FILTER ================= */
-document.querySelectorAll(".filters button").forEach(btn=>{
-  btn.addEventListener("click", (e)=>{
-    filter = btn.dataset.filter;
-
-    document.querySelectorAll(".filters button")
-      .forEach(b=>b.classList.remove("active"));
-
-    btn.classList.add("active");
-
-    render();
-  });
-});
-
-/* ================= STATS ================= */
-function updateStats(){
-  statsEl.innerText =
-    `📚 ${books.length} livres • 👤 Jérémy: ${books.filter(b=>b.member==="Jérémy").length} • Marion: ${books.filter(b=>b.member==="Marion").length}`;
+function setFilter(f){
+  filter = f;
+  render();
 }
 
-/* ================= RENDER OPTIMIZED ================= */
+/* ================= RENDER ================= */
 function render(){
-  const filtered = books
-    .filter(b => filter === "all" ? true : b.member === filter)
-    .sort((a,b)=> new Date(a.returnDate) - new Date(b.returnDate));
 
-  listEl.textContent = "";
+  const sorted = [...books]
+    .filter(b => filter==="all" ? true : b.member===filter)
+    .sort((a,b)=>new Date(a.return)-new Date(b.return));
 
-  const frag = document.createDocumentFragment();
-
-  for(const b of filtered){
-    const div = document.createElement("div");
-    div.className = "card";
+  listEl.innerHTML = sorted.map(b => {
 
     const gcal =
-      "https://calendar.google.com/calendar/render?action=TEMPLATE" +
-      "&text=" + encodeURIComponent("📚 " + b.title) +
-      "&dates=" + b.returnDate.replaceAll("-","") + "/" + b.returnDate.replaceAll("-","");
+      "https://calendar.google.com/calendar/render?action=TEMPLATE"+
+      "&text="+encodeURIComponent("📚 "+b.title)+
+      "&dates="+b.return.replaceAll("-","")+"/"+b.return.replaceAll("-","");
 
-    div.innerHTML = `
-      <b>${b.title}</b><br>
-      <span class="small">${b.author || ""}</span><br>
+    return `
+      <div class="card">
+        <b>${b.title}</b><br>
+        <span class="small">${b.author||""}</span><br>
 
-      <span class="badge ${b.member==="Jérémy"?"jeremy":"marion"}">
-        ${b.member}
-      </span>
+        <span class="badge ${b.member==="Jérémy"?"j":"m"}">
+          ${b.member}
+        </span>
 
-      <div class="small">📅 ${b.returnDate}</div>
+        <div class="small">📅 ${b.return}</div>
 
-      <button style="margin-top:8px;background:#34a853"
-        onclick="window.open('${gcal}','_blank')">
-        📅 Google Calendar
-      </button>
+        <div class="row">
+          <button onclick="window.open('${gcal}','_blank')">
+            Google Calendar
+          </button>
+          <button onclick="del(${b.id})" style="background:#e74c3c">
+            Supprimer
+          </button>
+        </div>
+      </div>
     `;
+  }).join("");
 
-    frag.appendChild(div);
-  }
-
-  listEl.appendChild(frag);
-  updateStats();
+  document.getElementById("stats").innerText =
+    `📚 ${books.length} livres`;
 }
 
 /* ================= AUTOCOMPLETE ================= */
-let timer;
+let t;
 
-async function search(q){
-  if(q.length < 2) return [];
-
-  if(cache.has(q)) return cache.get(q);
-
-  try {
-    const res = await fetch(`${WORKER}?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-
-    cache.set(q, data);
-    return data;
-
-  } catch {
-    return [];
-  }
-}
-
-/* debounce clean */
 titleEl.addEventListener("input", ()=>{
-  clearTimeout(timer);
 
-  timer = setTimeout(async ()=>{
-    const data = await search(titleEl.value);
+  clearTimeout(t);
 
-    autoEl.innerHTML = (data || [])
-      .slice(0,6)
-      .map(b=>`
-        <div class="item" onclick="pick('${b.title}','${b.author || ""}')">
-          📖 ${b.title}
-        </div>
-      `).join("");
+  t = setTimeout(async ()=>{
 
-  }, 200);
+    const q = titleEl.value.trim();
+    if(q.length < 2) return;
+
+    if(cache[q]){
+      draw(cache[q]);
+      return;
+    }
+
+    try{
+      const r = await fetch(`${WORKER}?q=${encodeURIComponent(q)}`);
+      const data = await r.json();
+
+      cache[q] = data;
+      draw(data);
+
+    }catch(e){
+      autoEl.innerHTML="";
+    }
+
+  },200);
 });
 
+function draw(data){
+  autoEl.innerHTML = (data || []).slice(0,8).map(b => `
+    <div class="item" onclick="pick('${esc(b.title)}','${esc(b.author||"")}')">
+      📖 ${b.title}
+    </div>
+  `).join("");
+}
+
 function pick(t,a){
-  titleEl.value = t;
-  authorEl.value = a;
-  autoEl.innerHTML = "";
+  titleEl.value=t;
+  authorEl.value=a;
+  autoEl.innerHTML="";
+}
+
+function esc(s=""){
+  return s.replaceAll("'","&#39;").replaceAll('"',"&quot;");
 }
 
 /* ================= INIT ================= */
-addBtn.addEventListener("click", addBook);
-
 render();
 
 </script>
