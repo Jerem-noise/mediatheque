@@ -141,6 +141,8 @@
     <button onclick="setFilter('Marion')">Marion</button>
   </div>
 
+  <button onclick="syncBooks()" style="margin-top: 10px; background: #2ecc71;">🔄 Synchroniser les livres</button>
+
   <div id="list"></div>
 
   <script>
@@ -194,16 +196,17 @@
       });
     }
 
-    // Calcule la date de retour
+    // Calcule la date de retour (1 mois - 3 jours, +15 jours si vacances)
     function computeReturn(dateStr) {
       const date = new Date(dateStr);
       if (isHoliday(dateStr)) {
-        // Ajouter 1 mois + 15 jours
+        // Ajouter 1 mois + 15 jours - 3 jours
         date.setMonth(date.getMonth() + 1);
-        date.setDate(date.getDate() + 15);
+        date.setDate(date.getDate() + 12); // 15 - 3 = 12
       } else {
-        // Ajouter 1 mois
+        // Ajouter 1 mois - 3 jours
         date.setMonth(date.getMonth() + 1);
+        date.setDate(date.getDate() - 3);
       }
       return date.toISOString().split("T")[0];
     }
@@ -239,6 +242,27 @@
         save();
         render();
       }
+    }
+
+    /* ================= SYNCHRONISATION ================= */
+    function syncBooks() {
+      // Récupérer les livres depuis le localStorage de l'autre utilisateur (simulé)
+      // En pratique, il faudrait un backend ou un stockage partagé (Firebase, etc.)
+      const otherUserBooks = JSON.parse(localStorage.getItem("books_v1_other") || "[]");
+
+      // Fusionner les livres (éviter les doublons)
+      const mergedBooks = [...books, ...otherUserBooks].reduce((acc, book) => {
+        if (!acc.some(b => b.id === book.id)) {
+          acc.push(book);
+        }
+        return acc;
+      }, []);
+
+      // Sauvegarder les livres fusionnés
+      books = mergedBooks;
+      save();
+      render();
+      alert("Livres synchronisés !");
     }
 
     /* ================= FILTRES ================= */
