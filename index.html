@@ -85,7 +85,6 @@
       background: #f3f4f6;
     }
 
-    /* Indicateur de chargement */
     .loading {
       padding: 8px;
       font-size: 12px;
@@ -151,6 +150,20 @@
     const MIN_QUERY_LENGTH = 2;
     const DEBOUNCE_DELAY = 200; // ms
 
+    // Périodes de vacances scolaires (Zone B, France, 2026-2027)
+    const HOLIDAYS = [
+      // Vacances de la Toussaint 2026
+      { start: "2026-10-18", end: "2026-11-02" },
+      // Vacances de Noël 2026-2027
+      { start: "2026-12-20", end: "2027-01-05" },
+      // Vacances d'hiver 2027
+      { start: "2027-02-21", end: "2027-03-09" },
+      // Vacances de printemps 2027
+      { start: "2027-04-18", end: "2027-05-04" },
+      // Vacances d'été 2027
+      { start: "2027-07-04", end: "2027-08-31" },
+    ];
+
     /* ================= ÉTAT ================= */
     let books = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     let filter = "all";
@@ -171,9 +184,27 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
     }
 
+    // Vérifie si une date est dans une période de vacances
+    function isHoliday(dateStr) {
+      const date = new Date(dateStr);
+      return HOLIDAYS.some(holiday => {
+        const start = new Date(holiday.start);
+        const end = new Date(holiday.end);
+        return date >= start && date <= end;
+      });
+    }
+
+    // Calcule la date de retour
     function computeReturn(dateStr) {
       const date = new Date(dateStr);
-      date.setMonth(date.getMonth() + 1);
+      if (isHoliday(dateStr)) {
+        // Ajouter 1 mois + 15 jours
+        date.setMonth(date.getMonth() + 1);
+        date.setDate(date.getDate() + 15);
+      } else {
+        // Ajouter 1 mois
+        date.setMonth(date.getMonth() + 1);
+      }
       return date.toISOString().split("T")[0];
     }
 
@@ -279,7 +310,6 @@
         return;
       }
 
-      // Afficher l'indicateur de chargement
       if (!isLoading) {
         isLoading = true;
         autoEl.innerHTML = `
